@@ -107,3 +107,40 @@ appears. The content script finds the line by that id, re-scrolls until it's
 on screen and stopped moving, then highlights the row. It depends only on
 GitHub's anchor ids, not on their markup. The panel messages the content script
 when the tab is already on Files and navigates there otherwise.
+
+## 2026-10-19: LLM analysis is a separate, slower endpoint
+
+`/api/prs/:o/:r/:n` returns PR data and rule flags in about a second, and
+`/analysis` runs the LLM. The panel requests both at once, so the reviewer has
+something useful immediately and the summary fills in when it's ready.
+`/analysis` fetches from GitHub again; caching (milestone 5) removes the
+duplicate work.
+
+## 2026-10-19: Map/reduce with numbered diff lines, validated with Zod
+
+- **Map:** files go to the model in chunks of up to ~16k characters (~4k
+  tokens, small enough for free-tier per-minute limits), at most 8 chunks per
+  PR. Every diff line is prefixed with its reference (`R12`, `L7`) and each
+  file carries its rule flags. The model returns a role, summary and up to 3
+  concerns per file.
+- **Reduce:** the per-file notes, description, commits and linked issues
+  become the summary ("what" and "why"), areas, and a review order.
+- **Budget:** lockfiles and generated files are never sent. When a PR exceeds
+  the budget, flagged files go in first, then source, tests and docs. Anything
+  left out is listed in the panel as "not fully read".
+- **Validation:** every reply is parsed with Zod. A reply that fails, or that
+  leaves out a file, gets one retry with the error in the prompt, then the next
+  provider. A line the model cites must exist in the diff it was shown;
+  otherwise the concern stays but loses its line link, so a made-up line never
+  becomes a wrong link. The review order keeps only real paths and appends any
+  the model forgot, by role.
+
+## 2026-10-19: Provider cooldowns are per Worker isolate for now
+
+Rate-limit cooldowns live in memory. A fresh isolate doesn't know a provider is
+cooling down and finds out from its next 429, which costs one wasted request.
+Moving cooldowns to KV is cheap if that waste shows up in practice.
+
+Watch at deploy time: the Workers free plan caps subrequests per request (GitHub
+pages + up to 8 map calls with retries + reduce). The chunk cap keeps a normal PR
+well under it, but a huge PR with many retries could get close.

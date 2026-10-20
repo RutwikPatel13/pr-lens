@@ -3,9 +3,11 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { GitHubError, type GitHubErrorCode } from './github/client';
+import type { LlmEnv } from './llm/config';
+import { AllProvidersFailedError, LlmNotConfiguredError } from './llm/fallback';
 import { prs } from './routes/prs';
 
-const app = new Hono();
+const app = new Hono<{ Bindings: LlmEnv }>();
 
 app.use(
   '/api/*',
@@ -32,6 +34,15 @@ app.onError((err, c) => {
     const body: ApiErrorBody = { error: { code: err.code, message: err.message } };
     if (err.resetAt !== undefined) body.error.resetAt = err.resetAt.toISOString();
     return c.json(body, STATUS[err.code]);
+  }
+  if (err instanceof LlmNotConfiguredError) {
+    return c.json<ApiErrorBody>({ error: { code: 'llm_not_configured', message: err.message } }, 503);
+  }
+  if (err instanceof AllProvidersFailedError) {
+    console.warn(err.message);
+    const body: ApiErrorBody = { error: { code: 'llm_unavailable', message: 'Every free LLM provider is busy or failed. Try again shortly.' } };
+    if (err.nextFree !== null) body.error.resetAt = err.nextFree.toISOString();
+    return c.json(body, 503);
   }
   console.error(err);
   return c.json<ApiErrorBody>({ error: { code: 'internal', message: 'Something went wrong on the server.' } }, 500);

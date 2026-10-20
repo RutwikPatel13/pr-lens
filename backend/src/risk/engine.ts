@@ -54,6 +54,7 @@ function analyzeFile(file: PrFile): RiskFlag[] {
     const range = firstChange(lines);
     flags.push({
       id: flagId(rule.id, file.path, range),
+      source: 'rule',
       ruleId: rule.id,
       category: rule.category,
       severity: rule.severity,
@@ -75,6 +76,7 @@ function analyzeFile(file: PrFile): RiskFlag[] {
       const isLast = i === runs.length - 1;
       flags.push({
         id: flagId(rule.id, file.path, range),
+        source: 'rule',
         ruleId: rule.id,
         category: rule.category,
         severity: rule.severity,

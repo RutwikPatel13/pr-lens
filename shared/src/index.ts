@@ -60,18 +60,21 @@ export type ApiErrorCode =
   | 'not_found'
   | 'rate_limited'
   | 'github_error'
+  | 'llm_not_configured'
+  | 'llm_unavailable'
   | 'internal';
 
 export type ApiErrorBody = {
   error: {
     code: ApiErrorCode;
     message: string;
-    // ISO timestamp, set for rate_limited.
+    // ISO timestamp, set for rate_limited and llm_unavailable (when the first provider frees up).
     resetAt?: string;
   };
 };
 
-export type RiskCategory = 'schema' | 'auth' | 'payments' | 'config' | 'dependencies' | 'tests' | 'secrets';
+// 'logic' is only used by LLM flags: general correctness concerns that fit no rule category.
+export type RiskCategory = 'schema' | 'auth' | 'payments' | 'config' | 'dependencies' | 'tests' | 'secrets' | 'logic';
 
 export type Severity = 'high' | 'medium' | 'low';
 
@@ -85,6 +88,8 @@ export type LineRange = {
 
 export type RiskFlag = {
   id: string;
+  // 'rule' flags come from the rule engine, 'llm' flags from the model (ruleId is then 'llm').
+  source: 'rule' | 'llm';
   ruleId: string;
   category: RiskCategory;
   severity: Severity;
@@ -111,4 +116,36 @@ export type RiskReport = {
 export type PrResponse = {
   pr: PrData;
   risk: RiskReport;
+};
+
+// Where a file sits in the system, used to order the review (schema first, tests last).
+export type FileRole = 'schema' | 'config' | 'core' | 'api' | 'ui' | 'test' | 'docs' | 'other';
+
+export type NotReadReason = SkipReason | 'no_patch' | 'over_budget';
+
+export type NotReadFile = {
+  path: string;
+  reason: NotReadReason;
+};
+
+export type ReviewStep = {
+  path: string;
+  role: FileRole;
+  reason: string;
+};
+
+export type PrAnalysis = {
+  summary: {
+    what: string;
+    why: string;
+    areas: string[];
+  };
+  reviewOrder: ReviewStep[];
+  flags: RiskFlag[];
+  // Files the model didn't see, so the reviewer knows what the summary doesn't cover.
+  notRead: NotReadFile[];
+  // Paths whose diff was cut short before the model saw it.
+  truncated: string[];
+  // Which provider/model handled the calls, in the order they were used.
+  models: string[];
 };

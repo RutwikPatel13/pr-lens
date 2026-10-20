@@ -104,14 +104,14 @@ npm install
 npm run dev -w extension         # vite + CRXJS; load extension/dist unpacked
 npm run build -w extension       # typecheck + production build to extension/dist
 npm run typecheck -w extension
-npm run dev -w backend           # wrangler dev on http://localhost:8787 (the panel's default backend)
+npm run dev -w backend           # wrangler dev on http://localhost:8787; LLM keys in backend/.dev.vars (see .dev.vars.example)
 npm run typecheck -w backend     # regenerates worker-configuration.d.ts, then tsc
 npm test -w backend              # vitest; one file: npm test -w backend -- tests/risk/engine.test.ts
 ```
 
 When a rule misses (or wrongly flags) something on a real PR, add that case to the "real PRs" block in `backend/tests/risk/engine.test.ts` before fixing the rule. Real PRs worth demoing go in `docs/demo-prs.md`.
 
-API: `GET /api/prs/:owner/:repo/:number` with header `X-GitHub-Token`. Errors are `{ error: { code, message } }` (types in `shared/src/index.ts`).
+API: `GET /api/prs/:owner/:repo/:number` (PR + rule flags, fast) and `.../analysis` (LLM, slow), both with header `X-GitHub-Token`. Errors are `{ error: { code, message } }` (types in `shared/src/index.ts`).
 
 Load the extension: chrome://extensions → Developer mode → Load unpacked → `extension/dist`.
 
