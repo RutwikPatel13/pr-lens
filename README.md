@@ -5,6 +5,8 @@ A Chrome extension that helps you review a GitHub pull request. Open a PR, open 
 - **A plain-English summary**: what the PR changes and the likely reason, from its description, commits and linked issues.
 - **A suggested review order**: migrations and schema first, then core logic, then API and UI, then tests.
 - **Risk flags** that link to the exact line: migrations, destructive drops, migrations with no rollback, auth and payment code, CI config, new dependencies, possible secrets, deleted or skipped tests.
+- **Ask the PR**: questions like "does anything still read `password_hash`?", answered from the diff, files at the PR's commit and code search, with sources you can click.
+- **Discussion**: the PR's review threads, with a suggested reply for any of them that you can edit and copy into GitHub.
 
 Nothing is posted to GitHub. The panel is for the reviewer only, which is the main difference from tools that add bot comments to the PR for everyone.
 
@@ -31,6 +33,8 @@ GitHub PR tab ── side panel (React) ──► backend (Hono on Cloudflare Wo
 **The model's output is validated.** Every reply is parsed with Zod and retried once with the error if it doesn't fit. A line the model cites must exist in the diff it was shown, or the concern loses its line link: an invented line never becomes a link to the wrong place.
 
 **Free LLM tiers, with fallback.** Groq (two models, each with its own quota), then Gemini, then OpenRouter. A short rate limit is waited out; a long one, a timeout or an outage sends the request to the next provider. The chain was tuned against measured free-tier behavior; see [docs/decisions.md](docs/decisions.md).
+
+**Ask: plan, gather, answer.** A question takes two LLM calls. First the model picks up to three identifiers to search for and files to read. The backend gathers that context (the diff, excerpts of files at the PR's head commit, GitHub code search) within a size budget, and the model answers from it. As with flags, every source it cites must be in what it was shown. Repository text and comments go into the prompt marked as untrusted data, so instructions hidden in a PR can't steer it. Code search only covers the default branch; the PR's own changes come from the diff.
 
 **Cached by head commit.** Results are stored in Cloudflare KV per head SHA and pipeline version, so reopening a PR takes about half a second and uses no LLM quota. A new push gets a fresh analysis. Only public repos are cached.
 
@@ -102,6 +106,5 @@ Each tradeoff (backend choice, free providers, caching, why the content script e
 ## Roadmap
 
 - GitHub OAuth, so private repos work without pasting a token
-- Ask the PR: free-form questions answered with extra context fetched from the repo
 - Custom rules per user or team
 - GitLab merge requests

@@ -259,3 +259,30 @@ panel is enabled only on PR tabs.
 
 Picked from four mocked-up placements (floating pill, icon button, edge tab, header). The
 header looks most native; the floating pill is kept as the fallback.
+
+## 2026-10-20: Ask the PR is plan -> gather -> answer, two LLM calls
+
+Picked over a tool-calling agent loop. A loop takes an unknown number of calls, and Groq's
+free tier allows 8k tokens a minute per model. Two fixed calls keep a question to a few
+seconds and are easy to explain.
+
+- **Plan:** the model sees the question and the changed files, and names up to 3 search
+  terms and 3 files.
+- **Gather:** the backend collects the diff, excerpts of those files at the PR's head commit
+  (windows around matching and changed lines, since real files run to thousands of lines),
+  and GitHub code search fragments, all within a ~16k-character budget.
+- **Answer:** the model answers with sources. As with flags, a cited path must be in the
+  gathered context, and a cited line must be one it was shown; otherwise it becomes a
+  file-level source or is dropped.
+- **Untrusted content:** repository text and comments are wrapped in `<untrusted>` tags
+  that the system prompt says are data. A closing tag inside the content is defused.
+- **Limits:** code search only indexes the default branch, which the panel says. Search is
+  rate-limited (~10/min), so a failed search is noted and the answer continues without it.
+- **No caching:** questions vary too much for a cache to pay off.
+
+Suggested replies reuse the same context building for one review thread and are copy-only.
+Posting was dropped earlier because GitHub's own comment box is beside the code, and
+fine-grained tokens can't write to other people's repos anyway.
+
+The panel uses tabs (Overview / Ask / Discussion), chosen from mockups over a pinned Ask
+box. The overview stays as it was, and a conversation gets room.
