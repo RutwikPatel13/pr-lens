@@ -3,7 +3,7 @@
   "name": "PR Lens",
   "version": "1.0.0",
   "description": "Explains GitHub pull requests to the person reviewing them.",
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA108sYwTt8peKbN4JVtmDmUKQPWkONadXs8gylZ+lLxLQZvg59txeNTJWE5MpjSSXwoHZi8sMHZ1BIEFpxsNV5tqTsjm6TQ/97KHPr022AQYrhAWVnPcf/an7DwOa2+AZQjoWza+qWVzOojR0sokADAZUxFouvt1oLhpvtD84TLDPrFS5yX/jLa5Ew6My0aYw/6SzQPVqZGZN+Tt3K1ewnUKGPhc3dcQjqJ9D8isxv/Kb4E4CfOBz1/NHgq3rOEeil8ftvnoefPbt3ZjU+LzpWTbW0TpYuwT+7vOw5mTcILTSBApKxDd8C+20SPertnwrs6sLoELcLLog1K48SFkRWwIDAQAB",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2jXNK0zjOVdYUyPHpHXpU+CQGcCWmlYwgszbGrUdS0ZhQW/H0bBYGaGJTBmHfnxJ3O7VRv8HuavI4cvXFcCp2pU4lx6K3cvrq9n0vxfPU6q8fPBHDBiVxU1+ptdm+GDYMY3VAVXz7zYj64bwsUJcbIyzQ+pEqbjRXHR4uyQRcqWWAjn2My0E7CJYURFooJvleaIT45jV/PPy3V0swpMbMJLVCRfC++MMhcXtJ/4jYbha+iZrgk6jArMauTpA/x+d3Wp5j/3cchCJo7hgGnJSAJLONj3kkKtZXLzj7TWUsGeP0aXE6fJ0KZTbFU99hi3TpeCFegZZY/2gN1W0KsmDlwIDAQAB",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",

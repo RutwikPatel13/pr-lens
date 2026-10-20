@@ -8,8 +8,8 @@
   // storage, and wrangler deploy creates the namespace on first deploy.
   "kv_namespaces": [{ "binding": "CACHE" }],
   "vars": {
-    // PR Lens's extension ID, fixed by the "key" in extension/manifest.json.
-    // Add the Chrome Web Store ID here too once it's published there.
-    "ALLOWED_EXTENSION_IDS": "mkfgkglfpnckfceehfdlmbgebfhbifcg"
+    // PR Lens's Chrome Web Store ID. Local builds get the same ID: the "key" in
+    // extension/manifest.json is the store's public key.
+    "ALLOWED_EXTENSION_IDS": "kpnecmaddfhjedpoohbndleebhepokdo"
   }
 }
