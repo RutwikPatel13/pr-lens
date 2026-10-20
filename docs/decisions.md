@@ -334,3 +334,11 @@ uncached question, uncached reply) count against the GitHub login behind the tok
 - **Identity:** the login comes from `GET /user` and is remembered per isolate under a hash
   of the token; the token itself is never stored.
 - **Without KV** (local tests), there's no limit, rather than everyone being blocked.
+
+## 2026-10-20: Name and logo
+
+Kept "PR Lens": it says what it does, and renaming would touch the extension, backend
+and repo for little gain. Logo: a magnifier over an added (green) and a removed (red) line,
+on GitHub's dark ink (`docs/brand/logo.svg`). Below 48px a simplified mark is used
+(`logo-small.svg`: thicker strokes, green line only), since the thin red line turns to noise
+at toolbar size. PNG icons in `extension/public/icons` are rendered from these SVGs.

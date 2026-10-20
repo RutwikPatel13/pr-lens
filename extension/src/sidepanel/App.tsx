@@ -4,7 +4,7 @@ import { ApiError, fetchAnalysis, fetchPr } from '../lib/api';
 import { PrDetails } from './PrDetails';
 import { Settings } from './Settings';
 import { TokenForm } from './TokenForm';
-import { BackIcon, buttonClass, Code, LensIcon, SettingsIcon } from './ui';
+import { BackIcon, buttonClass, Code, LogoMark, SettingsIcon } from './ui';
 import { useActivePr } from './useActivePr';
 import { useGitHubToken } from './useGitHubToken';
 import { usePrFetch } from './usePrFetch';
@@ -28,7 +28,7 @@ export function App() {
               <BackIcon />
             </button>
           ) : (
-            <LensIcon />
+            <LogoMark size={18} />
           )}
           {showSettings ? 'Settings' : 'PR Lens'}
         </div>

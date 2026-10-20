@@ -61,11 +61,14 @@ const iconProps = {
   'aria-hidden': true,
 };
 
-export function LensIcon() {
+// The PR Lens logo, small variant (docs/brand/logo-small.svg): readable at 16px.
+export function LogoMark({ size = 16 }: { size?: number }) {
   return (
-    <svg {...iconProps}>
-      <circle cx="11" cy="11" r="7" />
-      <path d="M21 21l-4.3-4.3" />
+    <svg width={size} height={size} viewBox="0 0 128 128" aria-hidden="true">
+      <rect width="128" height="128" rx="28" fill="#1f2328" />
+      <circle cx="56" cy="56" r="30" fill="none" stroke="#ffffff" strokeWidth="14" />
+      <path d="M78 78 L102 102" stroke="#ffffff" strokeWidth="18" strokeLinecap="round" />
+      <rect x="40" y="46" width="32" height="14" rx="7" fill="#3fb950" />
     </svg>
   );
 }

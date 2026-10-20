@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <title>PR Lens</title>
+  <rect width="128" height="128" rx="28" fill="#1f2328"/>
+  <circle cx="56" cy="56" r="30" fill="none" stroke="#ffffff" stroke-width="14"/>
+  <path d="M78 78 L102 102" stroke="#ffffff" stroke-width="18" stroke-linecap="round"/>
+  <rect x="40" y="46" width="32" height="14" rx="7" fill="#3fb950"/>
+</svg>

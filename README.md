@@ -1,4 +1,4 @@
-# PR Lens
+# <img src="docs/brand/logo.svg" width="36" height="36" alt="" align="top"> PR Lens
 
 A Chrome extension that helps you review a GitHub pull request. Open a PR, open the side panel, and you get:
 

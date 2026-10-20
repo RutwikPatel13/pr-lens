@@ -68,8 +68,9 @@ const STYLE = `
   }
 `;
 
-const LENS_ICON =
-  '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>';
+// The PR Lens logo, small variant (docs/brand/logo-small.svg).
+const LOGO =
+  '<svg width="16" height="16" viewBox="0 0 128 128" aria-hidden="true"><rect width="128" height="128" rx="28" fill="#1f2328"></rect><circle cx="56" cy="56" r="30" fill="none" stroke="#ffffff" stroke-width="14"></circle><path d="M78 78 L102 102" stroke="#ffffff" stroke-width="18" stroke-linecap="round"></path><rect x="40" y="46" width="32" height="14" rx="7" fill="#3fb950"></rect></svg>';
 
 function renderBadge(host: HTMLElement): void {
   const badge = host.shadowRoot?.querySelector('[data-badge]');
@@ -112,7 +113,7 @@ function createHost(pr: PrRef, mode: 'header' | 'floating'): HTMLElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.title = 'Open the review panel (Alt+Shift+P)';
-  button.innerHTML = `${LENS_ICON}<span>PR Lens</span><span data-badge></span>`;
+  button.innerHTML = `${LOGO}<span>PR Lens</span><span data-badge></span>`;
   button.addEventListener('click', () => {
     if (!extensionAlive()) {
       markStale(button);
