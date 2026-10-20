@@ -79,18 +79,22 @@ This is the core engineering problem. A big PR won't fit in one prompt, and send
 4. Skip or truncate generated files, lockfiles, and huge snapshots, and say so in the UI so the reviewer knows what wasn't read.
 5. Ask the model for structured JSON output (summary, risks with file and line, review order) and validate it before rendering.
 
-## Data model (first pass)
+## Data model
 
-- `pr_analysis`: id, repo_full_name, pr_number, head_sha, summary, review_order (json), created_at
-- `risk_flag`: id, analysis_id, file_path, line_start, line_end, category, severity, explanation
-- `user_settings`: user_id, custom_rules (json), created_at
+Cached in KV as JSON, public repos only, 30-day TTL (`backend/src/cache/keys.ts`):
+- `details:v<N>:<owner>/<repo>#<number>@<headSha>`: commits, files with patches, linked issues, rule flags
+- `analysis:v<N>:<owner>/<repo>#<number>@<headSha>`: `PrAnalysis` (summary, review order, LLM flags)
+
+Bump `PR_DETAILS_VERSION` when risk rules or stored GitHub fields change, `ANALYSIS_VERSION` when prompts, chunking, models or `PrAnalysis` change. PR metadata (title, description, state) is never cached.
+
+Later, for v2: `user_settings` (user_id, custom_rules json) in D1 or Supabase.
 
 ## Tech stack
 
 - Node 24 (`.nvmrc`), npm workspaces. Use npm, never pnpm or yarn.
 - Extension: Manifest V3, React 19, TypeScript, Vite 8 + CRXJS, Tailwind v4
 - Backend: Node + TypeScript + Hono (shares types with the extension via `/shared`)
-- Database: not chosen yet; decide at milestone 5 (Supabase free tier or Cloudflare D1/KV)
+- Cache: Cloudflare KV (`CACHE` binding), keyed by repo + PR + head SHA + version. No relational DB yet; add D1 or Supabase when something needs queries (e.g. v2 custom rules).
 - LLM: free tiers behind a provider interface with fallback (see above); Claude API as the paid upgrade
 - Hosting: Cloudflare Workers free tier (no cold-start sleep, runs Hono natively)
 - Everything in the MVP should run at $0.

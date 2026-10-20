@@ -38,7 +38,8 @@ export function fetchPr(pr: PrRef, token: string, signal: AbortSignal): Promise<
   return getJson<PrResponse>(prPath(pr), token, signal);
 }
 
-// LLM summary, review order and flags. Takes seconds to a minute.
-export function fetchAnalysis(pr: PrRef, token: string, signal: AbortSignal): Promise<PrAnalysis> {
-  return getJson<PrAnalysis>(`${prPath(pr)}/analysis`, token, signal);
+// LLM summary, review order and flags. Instant when cached, otherwise seconds to minutes.
+// refresh skips the cache and runs the model again.
+export function fetchAnalysis(pr: PrRef, token: string, signal: AbortSignal, refresh = false): Promise<PrAnalysis> {
+  return getJson<PrAnalysis>(`${prPath(pr)}/analysis${refresh ? '?refresh=1' : ''}`, token, signal);
 }

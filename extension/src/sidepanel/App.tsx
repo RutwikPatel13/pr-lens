@@ -1,9 +1,10 @@
-import type { PrRef } from '@pr-lens/shared';
+import type { PrAnalysis, PrRef } from '@pr-lens/shared';
+import { useCallback, useEffect, useState } from 'react';
+import { fetchAnalysis, fetchPr } from '../lib/api';
 import { PrDetails } from './PrDetails';
 import { TokenForm } from './TokenForm';
 import { useActivePr } from './useActivePr';
 import { useGitHubToken } from './useGitHubToken';
-import { fetchAnalysis, fetchPr } from '../lib/api';
 import { usePrFetch } from './usePrData';
 
 export function App() {
@@ -25,7 +26,8 @@ export function App() {
       ) : pr === null ? (
         <p className="text-gray-500">Open a GitHub pull request to see its analysis.</p>
       ) : (
-        <PrPanel pr={pr} token={token} onBadToken={clear} />
+        // Keyed by PR so per-PR state (like Re-run) resets when the reviewer moves to another PR.
+        <PrPanel key={`${pr.owner}/${pr.repo}#${pr.number}`} pr={pr} token={token} onBadToken={clear} />
       )}
     </main>
   );
@@ -33,14 +35,34 @@ export function App() {
 
 function PrPanel({ pr, token, onBadToken }: { pr: PrRef; token: string; onBadToken: () => Promise<void> }) {
   const state = usePrFetch(fetchPr, pr, token);
+  // Each Re-run click bumps the count; the new fetcher identity makes usePrFetch fetch again,
+  // skipping the cache. The first load (count 0) uses the cache.
+  const [reruns, setReruns] = useState(0);
+  const analysisFetcher = useCallback(
+    (ref: PrRef, t: string, signal: AbortSignal) => fetchAnalysis(ref, t, signal, reruns > 0),
+    [reruns],
+  );
   // Starts in parallel with the PR fetch; the slow LLM part fills in when ready.
-  const analysis = usePrFetch(fetchAnalysis, pr, token);
+  const analysis = usePrFetch(analysisFetcher, pr, token);
+  // The last analysis that loaded, kept on screen if a Re-run fails (free tiers often refuse
+  // a second run within the same minute).
+  const [lastAnalysis, setLastAnalysis] = useState<PrAnalysis | null>(null);
+  useEffect(() => {
+    if (analysis.status === 'loaded') setLastAnalysis(analysis.data);
+  }, [analysis]);
 
   if (state.status === 'loading') {
     return <p className="text-gray-500">Loading #{pr.number}…</p>;
   }
   if (state.status === 'loaded') {
-    return <PrDetails response={state.data} analysis={analysis} />;
+    return (
+      <PrDetails
+        response={state.data}
+        analysis={analysis}
+        previousAnalysis={lastAnalysis}
+        onRerun={() => setReruns((n) => n + 1)}
+      />
+    );
   }
 
   const { code, message, resetAt } = state.error;

@@ -27,7 +27,17 @@ const SKIP_LABEL: Record<SkipReason, string> = {
   snapshot: 'snapshot',
 };
 
-export function PrDetails({ response, analysis }: { response: PrResponse; analysis: FetchState<PrAnalysis> }) {
+export function PrDetails({
+  response,
+  analysis,
+  previousAnalysis,
+  onRerun,
+}: {
+  response: PrResponse;
+  analysis: FetchState<PrAnalysis>;
+  previousAnalysis: PrAnalysis | null;
+  onRerun: () => void;
+}) {
   const { pr: data, risk } = response;
   const missingPatches = data.files.filter((f) => f.patch === null).length;
   const skipReasons = new Map(risk.files.map((f) => [f.path, f.skipReason]));
@@ -71,9 +81,13 @@ export function PrDetails({ response, analysis }: { response: PrResponse; analys
         </section>
       )}
 
-      <AiSummary pr={data} state={analysis} />
+      <AiSummary pr={data} state={analysis} previous={previousAnalysis} onRerun={onRerun} />
 
-      <RiskFlags pr={data} ruleFlags={risk.flags} llmFlags={analysis.status === 'loaded' ? analysis.data.flags : []} />
+      <RiskFlags
+        pr={data}
+        ruleFlags={risk.flags}
+        llmFlags={analysis.status === 'loaded' ? analysis.data.flags : (previousAnalysis?.flags ?? [])}
+      />
 
       <section>
         <h2 className="mb-1 text-xs font-semibold uppercase text-gray-500">Files</h2>

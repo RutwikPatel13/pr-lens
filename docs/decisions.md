@@ -174,3 +174,37 @@ What changed as a result:
 
 Result: discourse#29187 in ~2.5s, and the 17-file discourse#28119 in ~13s, both
 on Groq. That PR failed after 120s before these changes.
+
+## 2026-10-19: Cache in Cloudflare KV, keyed by head commit and version
+
+**What's cached:** two entries per PR head, `details:` (paginated commits,
+files, linked issues and rule flags) and `analysis:` (the LLM output). The
+cheap PR metadata call is never cached: it gives the head SHA that picks the
+cache entry, and title, description and merged state can change without a new
+commit.
+
+**Why KV over D1/Supabase:** the access pattern is exactly "get by key", with
+no queries, joins or migrations. It's free, sits next to the Worker, and needs
+no account for local dev. The original Postgres tables (`pr_analysis`,
+`risk_flag`) would only be read back as one blob anyway. A relational DB comes
+back when something needs queries (custom rules in v2).
+
+**Keys** carry a version number (`ANALYSIS_VERSION`, `PR_DETAILS_VERSION`).
+Changing a prompt or rule means bumping the number, so old entries stop
+matching instead of being served stale. Owner and repo are lowercased because
+GitHub URLs are case-insensitive.
+
+**Only public repos are cached.** The cache is shared by everyone using the
+backend, so a private PR's analysis must never be served to someone without
+access. Private repos (v2) are simply uncached until per-user access checks
+exist.
+
+**Failures:** a failed analysis is never cached, and a failed Re-run leaves
+the earlier entry in place; the panel keeps showing it with a note. KV errors
+(e.g. the free plan's 1,000 writes a day) are logged and treated as a miss.
+
+**Measured locally:** a 17-file PR took 23s uncached and 0.43s cached; the
+remaining time is the one GitHub metadata call.
+
+**Known gap:** two reviewers opening the same uncached PR at once both run the
+model. Fine at this scale. A short "in progress" KV marker would fix it.
