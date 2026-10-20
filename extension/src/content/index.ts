@@ -1,6 +1,8 @@
 import { isScrollToAnchorMessage } from '../lib/messages';
+import { startOpenButton } from './open-button';
 
-// Runs on github.com. Only job: scroll the Files tab to a diff line and highlight it.
+// Runs on github.com. Two jobs: the "PR Lens" open button on PR pages (open-button.ts), and
+// scrolling the Files tab to a diff line and highlighting it.
 // GitHub renders diffs lazily, so content above the target keeps growing; we re-scroll
 // until the line is on screen and has stopped moving.
 
@@ -58,3 +60,5 @@ chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) =
 // Arriving via a link with a line anchor (the panel navigates here when the tab wasn't on Files).
 const hash = window.location.hash.slice(1);
 if (LINE_ANCHOR.test(hash)) void scrollToAnchor(hash);
+
+startOpenButton();

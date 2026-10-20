@@ -21,10 +21,12 @@ design reasoning in `docs/decisions.md`.
 
 ```
 extension/src/
-  background/     service worker: toolbar icon / Alt+Shift+P opens the panel
+  background/     service worker: panel enabled only on PR tabs; opens it for the in-page
+                  button; fetches the button's risk counts (content scripts can't, CORS)
   sidepanel/      panel UI, settings, hooks (useActivePr follows the active tab's URL)
   options/        extension options page, renders sidepanel/Settings
-  content/        on github.com: scrolls the Files tab to a line and highlights it
+  content/        on github.com: the "PR Lens" button in the PR header (floats if no slot),
+                  and scrolling the Files tab to a line
   lib/            api client, settings storage, GitHub anchor links, messages
 backend/src/
   routes/prs.ts   GET /api/prs/:o/:r/:n (PR + rule flags), .../analysis (LLM)
@@ -103,7 +105,11 @@ manifest change, the extension must be reloaded in chrome://extensions.
 - Changing prompts, chunking, models or `PrAnalysis` means bumping `ANALYSIS_VERSION`; risk
   rules or stored GitHub fields mean `PR_DETAILS_VERSION` (`backend/src/cache/keys.ts`).
   Otherwise stale cached results are served.
-- Chrome won't open the side panel without a user gesture. Don't try to auto-open it.
+- Chrome won't open the side panel without a user gesture. A click on our in-page button
+  counts, but only if the service worker calls `sidePanel.open()` with nothing awaited before it.
+- The button's header slots (`[data-component="PH_Actions"]`, `.gh-header-actions`) are GitHub
+  markup and will change. If they vanish, the button floats bottom-right instead; update
+  `HEADER_SLOTS` in `content/open-button.ts`.
 - GitHub navigates client-side: content scripts don't re-run between pages. PR detection
   uses `chrome.tabs` events.
 - GitHub line anchors are `#diff-<sha256(path)>R<n>` (`L<n>` for the old side). GitHub

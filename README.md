@@ -45,7 +45,7 @@ npm install
 npm run build -w extension
 ```
 
-Then in Chrome: `chrome://extensions` → Developer mode → **Load unpacked** → `extension/dist`. Pin PR Lens, open any public PR, and click the icon (or press Alt+Shift+P). The panel asks for a [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with "Public repositories" access; it's stored only in your browser.
+Then in Chrome: `chrome://extensions` → Developer mode → **Load unpacked** → `extension/dist`. Open any public PR and click the **PR Lens** button next to the PR's title (or press Alt+Shift+P). The panel asks for a [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with "Public repositories" access; it's stored only in your browser.
 
 Requires Node 22.12+ (`.nvmrc` says 24).
 

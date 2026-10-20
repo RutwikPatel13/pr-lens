@@ -65,7 +65,7 @@ header. The backend uses it for that request only and never stores or logs it.
 That keeps the backend stateless for now. The same token can later identify the
 user for per-user rate limits on LLM calls.
 
-## 2026-10-19: Side panel stays open across tabs; no auto-open
+## 2026-10-19: Side panel stays open across tabs; no auto-open (superseded below)
 
 Replaces the per-tab panel above. With a per-tab panel, leaving a PR closed it
 and every PR needed another click. Now the panel is window-wide: open it once
@@ -236,3 +236,26 @@ the model/cache/Re-run line pinned to the bottom.
 Colors are CSS variables switched by `data-theme`, exposed to Tailwind as tokens, so
 dark mode is one set of values rather than a second set of components. The theme
 follows the OS by default (as GitHub does), with a Light/Dark override in Settings.
+
+## 2026-10-20: One-click "PR Lens" button in the PR header; panel only on PR tabs
+
+Replaces the window-wide panel. That panel showed up on every tab (a placeholder off
+GitHub) and still needed the toolbar icon to open. Now the content script adds a "PR Lens"
+button, with the rule-flag count ("3 high"), next to the PR's own action buttons, and the
+panel is enabled only on PR tabs.
+
+- Opening the side panel still needs a user gesture. Tested 2026-10-20: a click on a
+  content-script button counts, as long as the service worker calls `sidePanel.open()`
+  synchronously in the message handler.
+- The header slots are GitHub markup (`[data-component="PH_Actions"]` on Conversation,
+  `.gh-header-actions` on Files). They'll change one day, so a slot is used only if it's
+  on screen, and otherwise the button floats bottom-right. GitHub's React header can
+  re-render and drop the button, so a MutationObserver puts it back.
+- The button lives in a shadow root, so GitHub's CSS and ours don't mix, and it follows
+  GitHub's own `data-color-mode`.
+- The count needs the backend, which CORS only opens to the extension's origin, so the
+  service worker fetches it for the content script. It's the same fast, cached request
+  the panel makes.
+
+Picked from four mocked-up placements (floating pill, icon button, edge tab, header). The
+header looks most native; the floating pill is kept as the fallback.
