@@ -11,9 +11,13 @@ A Chrome extension that helps you review a GitHub pull request. Open a PR, open 
 
 Nothing is posted to GitHub. The panel is for the reviewer only, which is the main difference from tools that add bot comments to the PR for everyone.
 
-![PR Lens demo: summary, risk flags, and jumping to a flagged line](docs/images/demo.gif)
+![PR Lens demo: the PR Lens button, summary, risk flags, jumping to a line, Ask, a suggested reply and a custom rule](docs/images/demo.gif)
 
-*[discourse/discourse#29187](https://github.com/discourse/discourse/pull/29187): a migration that drops password columns from the users table and can't be rolled back. Clicking the flag jumps to the line.*
+*[discourse/discourse#29187](https://github.com/discourse/discourse/pull/29187), a migration that drops password columns from the users table and can't be rolled back: the PR Lens button, the summary and review order, a risk flag that jumps to the line, Ask, a suggested reply, and a custom rule with its live preview.*
+
+| Ask the PR | Suggested reply | Your own rules |
+|---|---|---|
+| ![Ask tab with an answer and clickable sources](docs/images/ask.png) | ![Discussion tab with a suggested reply](docs/images/discussion.png) | ![Rule editor with a live preview on the open PR](docs/images/custom-rule.png) |
 
 ## How it works
 
@@ -36,6 +40,8 @@ GitHub PR tab ── side panel (React) ──► backend (Hono on Cloudflare Wo
 **Free LLM tiers, with fallback.** Groq (two models, each with its own quota), then Gemini, then OpenRouter. A short rate limit is waited out; a long one, a timeout or an outage sends the request to the next provider. The chain was tuned against measured free-tier behavior; see [docs/decisions.md](docs/decisions.md).
 
 **Ask: plan, gather, answer.** A question takes two LLM calls. First the model picks up to three identifiers to search for and files to read. The backend gathers that context (the diff, excerpts of files at the PR's head commit, GitHub code search) within a size budget, and the model answers from it. As with flags, every source it cites must be in what it was shown. Repository text and comments go into the prompt marked as untrusted data, so instructions hidden in a PR can't steer it. Code search only covers the default branch; the PR's own changes come from the diff.
+
+**Per-user limits.** Requests that actually run the AI count against the GitHub login behind the token (30 an hour, 100 a day by default). Cached results are free. It's a free-tier backend, so the point isn't cost but one person not using up everyone's quota.
 
 **Cached by head commit.** Results are stored in Cloudflare KV per head SHA and pipeline version, so reopening a PR takes about half a second and uses no LLM quota. A new push gets a fresh analysis. Only public repos are cached.
 

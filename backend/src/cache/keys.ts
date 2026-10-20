@@ -8,7 +8,7 @@ import type { PrRef } from '@pr-lens/shared';
 export const PR_DETAILS_VERSION = 1;
 export const ANALYSIS_VERSION = 1;
 export const ASK_VERSION = 1;
-export const REPLY_VERSION = 1;
+export const REPLY_VERSION = 2;
 
 export const CACHE_TTL_SECONDS = 30 * 24 * 60 * 60;
 
@@ -34,6 +34,7 @@ export async function askKey(ref: PrRef, headSha: string, question: string): Pro
   return `ask:v${ASK_VERSION}:${prId(ref, headSha)}:${await sha256Hex(normalizeQuestion(question))}`;
 }
 
-// A new comment in the thread changes the key, so the suggestion is redrafted; so does a new commit.
-export const replyKey = (ref: PrRef, headSha: string, threadId: string, commentCount: number, lastCommentAt: string) =>
-  `reply:v${REPLY_VERSION}:${prId(ref, headSha)}:${threadId}:${commentCount}:${lastCommentAt}`;
+// A new comment in the thread changes the key, so the suggestion is redrafted; so does a new
+// commit. The viewer is part of it: a reply is written as a particular person.
+export const replyKey = (ref: PrRef, headSha: string, threadId: string, commentCount: number, lastCommentAt: string, viewer: string) =>
+  `reply:v${REPLY_VERSION}:${prId(ref, headSha)}:${threadId}:${commentCount}:${lastCommentAt}:${viewer.toLowerCase()}`;

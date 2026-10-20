@@ -129,10 +129,22 @@ describe('suggestReply', () => {
       comments: [{ author: 'reviewer-a', body: 'Is this still read anywhere?', createdAt: '2026-10-01T00:00:00Z', url: 'u' }],
     };
     const provider = new FakeProvider('fake', [JSON.stringify({ reply: 'Not anymore.', reason: 'ignored_columns covers it.' })]);
-    const result = await suggestReply(new FallbackLlm([provider], new CooldownStore()), deps(), data, thread);
+    const result = await suggestReply(new FallbackLlm([provider], new CooldownStore()), deps(), data, thread, 'reviewer-b');
     expect(result).toEqual({ reply: 'Not anymore.', reason: 'ignored_columns covers it.', models: ['fake/test-model'] });
     const prompt = provider.requests[0]?.prompt ?? '';
+    // Says who the reply is written as, and whether that's the PR's author.
+    expect(prompt).toContain('as @reviewer-b, who is\nreviewing this PR (not its author)');
+    expect(prompt).toContain("The PR's author is @dev.");
     expect(prompt).toContain('@reviewer-a: Is this still read anywhere?');
     expect(prompt).toContain('R150     self.ignored_columns');
+  });
+});
+
+describe('suggestReply as the PR author', () => {
+  it('tells the model the viewer wrote the PR', async () => {
+    const thread: ReviewThread = { id: 'T2', path: 'app/models/user.rb', line: 150, resolved: false, outdated: false, comments: [{ author: 'reviewer-a', body: 'nit', createdAt: '2026-10-01T00:00:00Z', url: 'u' }] };
+    const provider = new FakeProvider('fake', [JSON.stringify({ reply: 'Fixed.', reason: 'r' })]);
+    await suggestReply(new FallbackLlm([provider], new CooldownStore()), deps(), data, thread, 'DEV');
+    expect(provider.requests[0]?.prompt).toContain('as @DEV, who is\nthe author of this PR');
   });
 });

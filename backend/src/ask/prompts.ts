@@ -79,8 +79,10 @@ JSON shape: {"answer":"...","sources":[{"path":"app/models/user.rb","line":"R5"}
   };
 }
 
-export function replyRequest(pr: PrData, thread: ReviewThread, blocks: ContextBlock[]): LlmRequest {
+export function replyRequest(pr: PrData, thread: ReviewThread, blocks: ContextBlock[], viewer: string): LlmRequest {
   const conversation = thread.comments.map((c) => `@${c.author ?? 'unknown'}: ${c.body}`).join('\n\n');
+  const isAuthor = pr.author !== null && viewer.toLowerCase() === pr.author.toLowerCase();
+  const role = isAuthor ? 'the author of this PR' : 'reviewing this PR (not its author)';
   return {
     system: SYSTEM,
     maxOutputTokens: 800,
@@ -93,7 +95,9 @@ The code it's about:
 
 ${describeBlocks(blocks)}
 
-Write the next reply in this thread for the person using this tool, who is reviewing the PR.
+The PR's author is @${pr.author ?? 'unknown'}. Write the next reply in this thread as @${viewer}, who is
+${role}. Speak only as @${viewer}: don't thank yourself, and don't ask yourself to make changes.
+A \`\`\`suggestion block in a comment is a proposed code change to the commented lines.
 Be specific to the code, brief (1 to 4 sentences), and polite. If the last comment already
 settles it, a short acknowledgement is fine.
 

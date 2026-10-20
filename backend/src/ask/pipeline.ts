@@ -112,6 +112,8 @@ export async function suggestReply(
   deps: AskDeps,
   pr: PrData,
   thread: ReviewThread,
+  // The GitHub login the reply is written as.
+  viewer: string,
 ): Promise<Omit<SuggestedReply, 'cached'>> {
   const blocks: ContextBlock[] = [];
   const prFile = pr.files.find((f) => f.path === thread.path);
@@ -121,6 +123,6 @@ export async function suggestReply(
   } else if (prFile?.patch != null) {
     blocks.push(diffBlock(thread.path, prFile.patch));
   }
-  const { value, model } = await llm.completeJson(replyRequest(pr, thread, blocks), parseReply);
+  const { value, model } = await llm.completeJson(replyRequest(pr, thread, blocks, viewer), parseReply);
   return { reply: value.reply, reason: value.reason, models: [model] };
 }

@@ -172,8 +172,11 @@ describe('Ask and reply cache keys', () => {
   });
 
   it('changes the reply key when the thread gets a new comment', () => {
-    const before = replyKey(ref, 'sha1', 'T1', 2, '2026-10-01T00:00:00Z');
-    expect(replyKey(ref, 'sha1', 'T1', 3, '2026-10-02T00:00:00Z')).not.toBe(before);
-    expect(replyKey(ref, 'sha2', 'T1', 2, '2026-10-01T00:00:00Z')).not.toBe(before);
+    const before = replyKey(ref, 'sha1', 'T1', 2, '2026-10-01T00:00:00Z', 'Alice');
+    expect(replyKey(ref, 'sha1', 'T1', 3, '2026-10-02T00:00:00Z', 'alice')).not.toBe(before);
+    expect(replyKey(ref, 'sha2', 'T1', 2, '2026-10-01T00:00:00Z', 'alice')).not.toBe(before);
+    // Written as someone else: a different reply.
+    expect(replyKey(ref, 'sha1', 'T1', 2, '2026-10-01T00:00:00Z', 'bob')).not.toBe(before);
+    expect(replyKey(ref, 'sha1', 'T1', 2, '2026-10-01T00:00:00Z', 'alice')).toBe(before);
   });
 });

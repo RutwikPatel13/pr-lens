@@ -139,10 +139,11 @@ prs.post('/:owner/:repo/:number/threads/suggest-reply', async (c) => {
     return c.json<ApiErrorBody>({ error: { code: 'not_found', message: 'That review thread is no longer on this PR.' } }, 404);
   }
   const last = thread.comments[thread.comments.length - 1];
-  const key = replyKey(req.ref, pr.headSha, thread.id, thread.comments.length, last?.createdAt ?? '');
+  const viewer = await loginForToken(req.token);
+  const key = replyKey(req.ref, pr.headSha, thread.id, thread.comments.length, last?.createdAt ?? '', viewer);
   const run = async () => {
     await chargeQuota(c.env, req.token);
-    return suggestReply(new FallbackLlm(providersFromEnv(c.env)), askDeps(req.token, req.ref, pr.headSha), pr, thread);
+    return suggestReply(new FallbackLlm(providersFromEnv(c.env)), askDeps(req.token, req.ref, pr.headSha), pr, thread, viewer);
   };
   return c.json<SuggestedReply>(await service.cached(key, isPublic, run));
 });
