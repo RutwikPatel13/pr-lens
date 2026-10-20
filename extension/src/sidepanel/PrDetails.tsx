@@ -1,6 +1,8 @@
-import type { FileStatus, PrData, PrResponse, SkipReason } from '@pr-lens/shared';
+import type { FileStatus, PrAnalysis, PrData, PrResponse, SkipReason } from '@pr-lens/shared';
 import { jumpToLine } from '../lib/jump-to-line';
+import { AiSummary } from './AiSummary';
 import { RiskFlags } from './RiskFlags';
+import type { FetchState } from './usePrData';
 
 const STATUS_LABEL: Record<FileStatus, string> = {
   added: 'A',
@@ -25,7 +27,7 @@ const SKIP_LABEL: Record<SkipReason, string> = {
   snapshot: 'snapshot',
 };
 
-export function PrDetails({ response }: { response: PrResponse }) {
+export function PrDetails({ response, analysis }: { response: PrResponse; analysis: FetchState<PrAnalysis> }) {
   const { pr: data, risk } = response;
   const missingPatches = data.files.filter((f) => f.patch === null).length;
   const skipReasons = new Map(risk.files.map((f) => [f.path, f.skipReason]));
@@ -69,7 +71,9 @@ export function PrDetails({ response }: { response: PrResponse }) {
         </section>
       )}
 
-      <RiskFlags pr={data} flags={risk.flags} />
+      <AiSummary pr={data} state={analysis} />
+
+      <RiskFlags pr={data} ruleFlags={risk.flags} llmFlags={analysis.status === 'loaded' ? analysis.data.flags : []} />
 
       <section>
         <h2 className="mb-1 text-xs font-semibold uppercase text-gray-500">Files</h2>

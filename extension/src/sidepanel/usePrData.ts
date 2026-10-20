@@ -1,21 +1,21 @@
-import type { PrRef, PrResponse } from '@pr-lens/shared';
+import type { PrRef } from '@pr-lens/shared';
 import { useEffect, useState } from 'react';
-import { ApiError, fetchPrAnalysis } from '../lib/api';
+import { ApiError } from '../lib/api';
 
-export type PrDataState =
-  | { status: 'loading' }
-  | { status: 'loaded'; data: PrResponse }
-  | { status: 'error'; error: ApiError };
+export type FetchState<T> = { status: 'loading' } | { status: 'loaded'; data: T } | { status: 'error'; error: ApiError };
 
-export function usePrData(pr: PrRef, token: string): PrDataState {
-  const [state, setState] = useState<PrDataState>({ status: 'loading' });
+type Fetcher<T> = (pr: PrRef, token: string, signal: AbortSignal) => Promise<T>;
+
+// Fetches for the current PR, cancelling the previous request when the PR or token changes.
+export function usePrFetch<T>(fetcher: Fetcher<T>, pr: PrRef, token: string): FetchState<T> {
+  const [state, setState] = useState<FetchState<T>>({ status: 'loading' });
   const { owner, repo, number } = pr;
 
   useEffect(() => {
     const controller = new AbortController();
     setState({ status: 'loading' });
 
-    fetchPrAnalysis({ owner, repo, number }, token, controller.signal).then(
+    fetcher({ owner, repo, number }, token, controller.signal).then(
       (data) => setState({ status: 'loaded', data }),
       (err: unknown) => {
         if (controller.signal.aborted) return; // superseded by a newer PR or unmount
@@ -25,7 +25,7 @@ export function usePrData(pr: PrRef, token: string): PrDataState {
     );
 
     return () => controller.abort();
-  }, [owner, repo, number, token]);
+  }, [fetcher, owner, repo, number, token]);
 
   return state;
 }

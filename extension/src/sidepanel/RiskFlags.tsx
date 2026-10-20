@@ -9,6 +9,7 @@ const CATEGORY_LABEL: Record<RiskCategory, string> = {
   dependencies: 'Dependencies',
   tests: 'Tests',
   secrets: 'Secrets',
+  logic: 'Logic',
 };
 
 const SEVERITY_STYLE: Record<Severity, string> = {
@@ -23,7 +24,11 @@ function lineLabel(flag: RiskFlag): string {
   return start === end ? `:${start}` : `:${start}-${end}`;
 }
 
-export function RiskFlags({ pr, flags }: { pr: PrRef; flags: RiskFlag[] }) {
+const SEVERITY_ORDER: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
+
+// Rule flags arrive first; LLM flags join them once the analysis finishes.
+export function RiskFlags({ pr, ruleFlags, llmFlags }: { pr: PrRef; ruleFlags: RiskFlag[]; llmFlags: RiskFlag[] }) {
+  const flags = [...ruleFlags, ...llmFlags].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
   return (
     <section>
       <h2 className="mb-1 text-xs font-semibold uppercase text-gray-500">Risk flags ({flags.length})</h2>
@@ -36,6 +41,7 @@ export function RiskFlags({ pr, flags }: { pr: PrRef; flags: RiskFlag[] }) {
               <div className="flex items-center gap-1.5 text-xs">
                 <span className={`rounded px-1.5 py-0.5 font-medium ${SEVERITY_STYLE[flag.severity]}`}>{flag.severity}</span>
                 <span className="text-gray-600">{CATEGORY_LABEL[flag.category]}</span>
+                {flag.source === 'llm' && <span className="rounded bg-violet-100 px-1.5 py-0.5 text-violet-800">AI</span>}
               </div>
               <button
                 onClick={() => void jumpToLine(pr, flag.filePath, flag.lines)}

@@ -3,7 +3,8 @@ import { PrDetails } from './PrDetails';
 import { TokenForm } from './TokenForm';
 import { useActivePr } from './useActivePr';
 import { useGitHubToken } from './useGitHubToken';
-import { usePrData } from './usePrData';
+import { fetchAnalysis, fetchPr } from '../lib/api';
+import { usePrFetch } from './usePrData';
 
 export function App() {
   const pr = useActivePr();
@@ -31,13 +32,15 @@ export function App() {
 }
 
 function PrPanel({ pr, token, onBadToken }: { pr: PrRef; token: string; onBadToken: () => Promise<void> }) {
-  const state = usePrData(pr, token);
+  const state = usePrFetch(fetchPr, pr, token);
+  // Starts in parallel with the PR fetch; the slow LLM part fills in when ready.
+  const analysis = usePrFetch(fetchAnalysis, pr, token);
 
   if (state.status === 'loading') {
     return <p className="text-gray-500">Loading #{pr.number}…</p>;
   }
   if (state.status === 'loaded') {
-    return <PrDetails response={state.data} />;
+    return <PrDetails response={state.data} analysis={analysis} />;
   }
 
   const { code, message, resetAt } = state.error;
