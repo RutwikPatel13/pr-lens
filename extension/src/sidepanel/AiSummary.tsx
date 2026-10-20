@@ -1,6 +1,8 @@
 import type { FileRole, NotReadReason, PrAnalysis, PrRef } from '@pr-lens/shared';
 import { useEffect, useState } from 'react';
 import { jumpToLine } from '../lib/jump-to-line';
+import { shortName, splitPath } from '../lib/paths';
+import { Section, buttonClass } from './ui';
 import type { FetchState } from './usePrFetch';
 
 const ROLE_LABEL: Record<FileRole, string> = {
@@ -39,6 +41,7 @@ type Props = {
   onRerun: () => void;
 };
 
+// Summary and review order. The model/cache/Re-run line is AnalysisFooter, at the bottom of the panel.
 export function AiSummary({ pr, state, previous, onRerun }: Props) {
   if (state.status !== 'loaded' && previous !== null) {
     const note =
@@ -46,31 +49,32 @@ export function AiSummary({ pr, state, previous, onRerun }: Props) {
         ? 'Re-running…'
         : `Re-run failed: ${state.error.message}${state.error.resetAt !== null ? ` Next provider frees up at ${state.error.resetAt.toLocaleTimeString()}.` : ''} Showing the earlier analysis.`;
     return (
-      <div className="space-y-2">
-        <p className="text-xs text-amber-800">{note}</p>
-        <AnalysisView pr={pr} analysis={previous} onRerun={onRerun} />
-      </div>
+      <>
+        <p className="m-0 border-b border-line bg-medium-bg px-4 py-2 text-xs text-medium-fg">{note}</p>
+        <AnalysisSections pr={pr} analysis={previous} />
+      </>
     );
   }
   if (state.status === 'loading') return <AnalysisLoading />;
   if (state.status === 'error') {
     const { code, message, resetAt } = state.error;
     const text =
-      code === 'llm_not_configured' ? 'AI summary is off: the backend has no LLM keys yet (see backend/.dev.vars.example).' : message;
+      code === 'llm_not_configured' ? 'AI summary is off: the backend has no LLM keys configured.' : message;
     return (
-      <p className="text-xs text-gray-600">
-        {text}
-        {resetAt !== null && ` Next provider frees up at ${resetAt.toLocaleTimeString()}.`}{' '}
+      <Section title="Summary">
+        <p className="m-0 text-xs text-muted">
+          {text}
+          {resetAt !== null && ` Next provider frees up at ${resetAt.toLocaleTimeString()}.`}
+        </p>
         {code !== 'llm_not_configured' && (
-          <button onClick={onRerun} className="underline">
+          <button onClick={onRerun} className={`${buttonClass} self-start`}>
             Try again
           </button>
         )}
-      </p>
+      </Section>
     );
   }
-
-  return <AnalysisView pr={pr} analysis={state.data} onRerun={onRerun} />;
+  return <AnalysisSections pr={pr} analysis={state.data} />;
 }
 
 // No progress events from the backend yet, so the honest signal is elapsed time.
@@ -81,90 +85,118 @@ function AnalysisLoading() {
     return () => clearInterval(timer);
   }, []);
   return (
-    <div className="space-y-1 text-xs text-gray-500">
-      <p className="animate-pulse">Reading the diff with an LLM… {seconds}s</p>
-      {seconds >= 15 && <p>Free tiers are slow on large PRs; this can take a minute or two. Rule flags below are already complete.</p>}
-    </div>
+    <Section title="Summary">
+      <div className="flex animate-pulse flex-col gap-2" aria-hidden="true">
+        <div className="h-3 w-full rounded bg-inset" />
+        <div className="h-3 w-5/6 rounded bg-inset" />
+        <div className="h-3 w-2/3 rounded bg-inset" />
+      </div>
+      <p className="m-0 text-xs text-muted">
+        Reading the diff with an LLM… {seconds}s
+        {seconds >= 15 && '. Free tiers are slow on large PRs; this can take a minute or two. The risks below are already complete.'}
+      </p>
+    </Section>
   );
 }
 
-function AnalysisView({ pr, analysis, onRerun }: { pr: PrRef; analysis: PrAnalysis; onRerun: () => void }) {
-  const { summary, reviewOrder, notRead, truncated, models, generatedAt, cached } = analysis;
+function AnalysisSections({ pr, analysis }: { pr: PrRef; analysis: PrAnalysis }) {
+  const { summary, reviewOrder, notRead, truncated } = analysis;
   const overBudget = notRead.filter((f) => f.reason === 'over_budget').length;
+  const unread = notRead.length + truncated.length;
+
   return (
-    <div className="space-y-4">
-      {overBudget > 0 && (
-        <p className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
-          Large PR: the AI read {reviewOrder.length} of {reviewOrder.length + notRead.length} changed files, starting with the
-          flagged ones. Rule flags cover every file.
-        </p>
-      )}
-      <section className="space-y-1">
-        <h2 className="text-xs font-semibold uppercase text-gray-500">Summary</h2>
-        <p>{summary.what}</p>
-        <p className="text-gray-700">
-          <span className="font-medium">Why: </span>
+    <>
+      <Section title="Summary" aside={<span className="text-[11px] text-muted">AI-written · check it</span>}>
+        {overBudget > 0 && (
+          <p className="m-0 rounded-md border border-medium-line bg-medium-bg p-2 text-xs text-medium-fg">
+            Large PR: the AI read {reviewOrder.length} of {reviewOrder.length + notRead.length} changed files, starting with the
+            flagged ones. Risks cover every file.
+          </p>
+        )}
+        <p className="m-0">{summary.what}</p>
+        <p className="m-0 text-muted">
+          <span className="font-semibold text-fg">Why: </span>
           {summary.why}
         </p>
         {summary.areas.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {summary.areas.map((area) => (
-              <span key={area} className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700">
+              <span key={area} className="rounded-full bg-inset px-2 py-0.5 text-xs text-muted">
                 {area}
               </span>
             ))}
           </div>
         )}
-      </section>
+      </Section>
 
-      <section>
-        <h2 className="mb-1 text-xs font-semibold uppercase text-gray-500">Suggested review order</h2>
-        <ol className="space-y-1.5">
-          {reviewOrder.map((step, i) => (
-            <li key={step.path} className="flex gap-2 text-xs">
-              <span className="w-4 shrink-0 text-right text-gray-400">{i + 1}.</span>
-              <div className="min-w-0">
+      <Section title="Review order">
+        <ol className="m-0 flex list-none flex-col gap-3 p-0">
+          {reviewOrder.map((step, i) => {
+            const { dir, name } = splitPath(step.path);
+            return (
+              <li key={step.path}>
                 <button
                   onClick={() => void jumpToLine(pr, step.path, null)}
-                  className="text-left font-mono break-all text-blue-700 hover:underline"
+                  title={step.path}
+                  className="flex w-full cursor-pointer gap-2.5 text-left text-fg"
                 >
-                  {step.path}
-                </button>{' '}
-                <span className="text-gray-400">{ROLE_LABEL[step.role]}</span>
-                <p className="text-gray-600">{step.reason}</p>
-              </div>
-            </li>
-          ))}
+                  <span
+                    className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[11px] font-semibold ${
+                      i === 0 ? 'bg-strong text-on-strong' : 'border border-line bg-inset text-fg'
+                    }`}
+                  >
+                    {i + 1}
+                  </span>
+                  <span className="flex min-w-0 flex-col gap-0.5">
+                    <span className="font-mono text-xs font-semibold text-accent hover:underline">{shortName(name)}</span>
+                    <span className="text-xs text-muted">
+                      {dir !== '' ? `${dir} · ` : ''}
+                      {ROLE_LABEL[step.role]}
+                    </span>
+                    <span className="text-xs">{step.reason}</span>
+                  </span>
+                </button>
+              </li>
+            );
+          })}
         </ol>
-      </section>
+        {unread > 0 && (
+          <details className="text-xs text-muted">
+            <summary className="cursor-pointer">
+              Not fully read: {unread} file{unread === 1 ? '' : 's'}
+            </summary>
+            <ul className="m-0 mt-1 flex list-none flex-col gap-0.5 p-0 font-mono">
+              {notRead.map((f) => (
+                <li key={f.path} className="break-all">
+                  {f.path} <span className="font-sans">({NOT_READ_LABEL[f.reason]})</span>
+                </li>
+              ))}
+              {truncated.map((path) => (
+                <li key={path} className="break-all">
+                  {path} <span className="font-sans">(diff cut short)</span>
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
+      </Section>
+    </>
+  );
+}
 
-      {(notRead.length > 0 || truncated.length > 0) && (
-        <details className="text-xs text-amber-800">
-          <summary className="cursor-pointer">
-            Not fully read: {notRead.length + truncated.length} file{notRead.length + truncated.length === 1 ? '' : 's'}
-          </summary>
-          <ul className="mt-1 space-y-0.5 font-mono">
-            {notRead.map((f) => (
-              <li key={f.path} className="break-all">
-                {f.path} <span className="font-sans text-amber-700">({NOT_READ_LABEL[f.reason]})</span>
-              </li>
-            ))}
-            {truncated.map((path) => (
-              <li key={path} className="break-all">
-                {path} <span className="font-sans text-amber-700">(diff cut short)</span>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
-
-      <p className="text-xs text-gray-400">
-        Generated by {models.join(', ')} {timeAgo(generatedAt)}
-        {cached && ' (cached for this commit)'}. Check before relying on it.{' '}
-        <button onClick={onRerun} className="underline hover:text-gray-600">
-          Re-run
-        </button>
-      </p>
-    </div>
+// Pinned to the bottom of the panel: which model wrote the analysis, whether it's cached, Re-run.
+export function AnalysisFooter({ analysis, busy, onRerun }: { analysis: PrAnalysis | null; busy: boolean; onRerun: () => void }) {
+  if (analysis === null) return null;
+  const model = analysis.models.map((m) => m.split('/').slice(1).join('/')).join(', ');
+  return (
+    <footer className="sticky bottom-0 mt-auto flex items-center justify-between gap-3 border-t border-line bg-subtle px-4 py-2.5 text-xs text-muted">
+      <span title={`Generated by ${analysis.models.join(', ')}. Check before relying on it.`}>
+        {model} · {timeAgo(analysis.generatedAt)}
+        {analysis.cached ? ' · cached for this commit' : ''}
+      </span>
+      <button onClick={onRerun} disabled={busy} className={buttonClass}>
+        {busy ? 'Running…' : 'Re-run'}
+      </button>
+    </footer>
   );
 }

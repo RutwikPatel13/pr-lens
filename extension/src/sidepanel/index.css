@@ -1,1 +1,104 @@
 @import 'tailwindcss';
+
+/*
+ * Colors follow GitHub's Primer palette so the panel looks native next to github.com in
+ * either theme. Components use the tokens (bg-canvas, text-muted, border-line, ...), never
+ * raw colors, so dark mode is one set of values below. data-theme on <html> is set by useTheme.
+ */
+:root,
+[data-theme='light'] {
+  color-scheme: light;
+  --c-canvas: #ffffff;
+  --c-subtle: #f6f8fa;
+  --c-inset: #eff2f5;
+  --c-line: #d1d9e0;
+  --c-fg: #1f2328;
+  --c-muted: #59636e;
+  --c-accent: #0969da;
+  --c-control: #ffffff;
+  --c-strong: #1f2328;
+  --c-on-strong: #ffffff;
+  --c-success: #1a7f37;
+  --c-danger: #d1242f;
+  --c-attention: #9a6700;
+  --c-open: #1f883d;
+  --c-closed: #cf222e;
+  --c-merged: #8250df;
+  --c-high-bg: #ffebe9;
+  --c-high-fg: #a40e26;
+  --c-high-line: #ffcecb;
+  --c-medium-bg: #fff8c5;
+  --c-medium-fg: #7d4e00;
+  --c-medium-line: #f5e0a0;
+  --c-low-bg: #eff2f5;
+  --c-low-fg: #59636e;
+  --c-low-line: #d1d9e0;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --c-canvas: #0d1117;
+  --c-subtle: #151b23;
+  --c-inset: #262c36;
+  --c-line: #3d444d;
+  --c-fg: #f0f6fc;
+  --c-muted: #9198a1;
+  --c-accent: #4493f8;
+  --c-control: #212830;
+  --c-strong: #f0f6fc;
+  --c-on-strong: #0d1117;
+  --c-success: #3fb950;
+  --c-danger: #f85149;
+  --c-attention: #d29922;
+  --c-open: #238636;
+  --c-closed: #da3633;
+  --c-merged: #8957e5;
+  --c-high-bg: #3c1e1e;
+  --c-high-fg: #ffa198;
+  --c-high-line: #6e2b2b;
+  --c-medium-bg: #33290f;
+  --c-medium-fg: #e3b341;
+  --c-medium-line: #5c4813;
+  --c-low-bg: #262c36;
+  --c-low-fg: #9198a1;
+  --c-low-line: #3d444d;
+}
+
+@theme inline {
+  --color-canvas: var(--c-canvas);
+  --color-subtle: var(--c-subtle);
+  --color-inset: var(--c-inset);
+  --color-line: var(--c-line);
+  --color-fg: var(--c-fg);
+  --color-muted: var(--c-muted);
+  --color-accent: var(--c-accent);
+  --color-control: var(--c-control);
+  --color-strong: var(--c-strong);
+  --color-on-strong: var(--c-on-strong);
+  --color-success: var(--c-success);
+  --color-danger: var(--c-danger);
+  --color-attention: var(--c-attention);
+  --color-open: var(--c-open);
+  --color-closed: var(--c-closed);
+  --color-merged: var(--c-merged);
+  --color-high-bg: var(--c-high-bg);
+  --color-high-fg: var(--c-high-fg);
+  --color-high-line: var(--c-high-line);
+  --color-medium-bg: var(--c-medium-bg);
+  --color-medium-fg: var(--c-medium-fg);
+  --color-medium-line: var(--c-medium-line);
+  --color-low-bg: var(--c-low-bg);
+  --color-low-fg: var(--c-low-fg);
+  --color-low-line: var(--c-low-line);
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
+}
+
+body {
+  margin: 0;
+  background: var(--c-canvas);
+  color: var(--c-fg);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.5;
+}

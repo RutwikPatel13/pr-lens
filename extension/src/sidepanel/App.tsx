@@ -4,36 +4,56 @@ import { ApiError, fetchAnalysis, fetchPr } from '../lib/api';
 import { PrDetails } from './PrDetails';
 import { Settings } from './Settings';
 import { TokenForm } from './TokenForm';
+import { BackIcon, buttonClass, Code, LensIcon, SettingsIcon } from './ui';
 import { useActivePr } from './useActivePr';
 import { useGitHubToken } from './useGitHubToken';
 import { usePrFetch } from './usePrFetch';
+import { useTheme } from './useTheme';
+
+const iconButton =
+  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-line bg-control text-muted hover:text-fg';
 
 export function App() {
+  useTheme();
   const pr = useActivePr();
   const { token, save, clear } = useGitHubToken();
   const [showSettings, setShowSettings] = useState(false);
 
   return (
-    <main className="space-y-4 p-4 font-sans text-sm text-gray-900">
-      <header className="flex items-baseline justify-between">
-        <h1 className="text-base font-semibold">PR Lens</h1>
-        {token !== undefined && (
-          <button onClick={() => setShowSettings((s) => !s)} className="text-xs text-gray-500 hover:underline">
-            {showSettings ? 'Back' : 'Settings'}
+    <div className="flex min-h-screen flex-col">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-line bg-subtle px-4 py-2.5">
+        <div className="flex items-center gap-2 text-sm font-semibold">
+          {showSettings ? (
+            <button onClick={() => setShowSettings(false)} aria-label="Back" className={iconButton}>
+              <BackIcon />
+            </button>
+          ) : (
+            <LensIcon />
+          )}
+          {showSettings ? 'Settings' : 'PR Lens'}
+        </div>
+        {token !== undefined && !showSettings && (
+          <button onClick={() => setShowSettings(true)} aria-label="Settings" className={iconButton}>
+            <SettingsIcon />
           </button>
         )}
       </header>
-      {token === undefined ? null : showSettings ? (
-        <Settings />
-      ) : token === null ? (
-        <TokenForm onSave={save} />
-      ) : pr === null ? (
-        <p className="text-gray-500">Open a GitHub pull request to see its analysis.</p>
-      ) : (
-        // Keyed by PR so per-PR state (like Re-run) resets when the reviewer moves to another PR.
-        <PrPanel key={`${pr.owner}/${pr.repo}#${pr.number}`} pr={pr} token={token} onBadToken={clear} />
-      )}
-    </main>
+
+      <main className="flex flex-1 flex-col">
+        {token === undefined ? null : showSettings ? (
+          <Settings />
+        ) : token === null ? (
+          <div className="p-4">
+            <TokenForm onSave={save} />
+          </div>
+        ) : pr === null ? (
+          <p className="m-0 p-4 text-muted">Open a GitHub pull request to see its analysis.</p>
+        ) : (
+          // Keyed by PR so per-PR state (like Re-run) resets when the reviewer moves to another PR.
+          <PrPanel key={`${pr.owner}/${pr.repo}#${pr.number}`} pr={pr} token={token} onBadToken={clear} />
+        )}
+      </main>
+    </div>
   );
 }
 
@@ -92,41 +112,43 @@ type ErrorBoxProps = {
 
 function ErrorBox({ error, onRetry, onChangeToken }: ErrorBoxProps) {
   return (
-    <div className="space-y-2 rounded border border-red-200 bg-red-50 p-3 text-red-900">
-      <p>{error.message}</p>
+    <div className="m-4 flex flex-col gap-2 rounded-md border border-high-line bg-high-bg p-3 text-high-fg">
+      <p className="m-0 font-semibold">{error.message}</p>
       {error.code === 'network' && (
-        <p className="text-xs">
-          If you run the backend locally, start it with <code className="font-mono">npm run dev -w backend</code>. To use a
-          different backend, change it in Settings.
+        <p className="m-0 text-xs">
+          If you run the backend locally, start it with <Code>npm run dev -w backend</Code>. To use a different backend,
+          change it in Settings.
         </p>
       )}
       {error.resetAt !== null && (
-        <p className="text-xs">GitHub allows more requests after {error.resetAt.toLocaleTimeString()}.</p>
+        <p className="m-0 text-xs">GitHub allows more requests after {error.resetAt.toLocaleTimeString()}.</p>
       )}
-      <div className="flex gap-3 text-xs">
-        {onRetry !== null && (
-          <button onClick={onRetry} className="underline">
-            Retry
-          </button>
-        )}
-        {onChangeToken !== null && (
-          <button onClick={onChangeToken} className="underline">
-            Enter a different token
-          </button>
-        )}
-      </div>
+      {(onRetry !== null || onChangeToken !== null) && (
+        <div className="flex gap-2">
+          {onRetry !== null && (
+            <button onClick={onRetry} className={buttonClass}>
+              Retry
+            </button>
+          )}
+          {onChangeToken !== null && (
+            <button onClick={onChangeToken} className={buttonClass}>
+              Enter a different token
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
 function LoadingSkeleton() {
-  const bar = 'h-3 rounded bg-gray-200';
+  const bar = 'h-3 rounded bg-inset';
   return (
-    <div className="animate-pulse space-y-3" aria-label="Loading pull request">
+    <div className="flex animate-pulse flex-col gap-3 p-4" aria-label="Loading pull request">
       <div className={`${bar} h-4 w-3/4`} />
       <div className={`${bar} w-1/2`} />
       <div className={`${bar} w-1/3`} />
-      <div className="space-y-2 pt-4">
+      <div className="flex flex-col gap-2 pt-4">
         <div className={`${bar} w-full`} />
         <div className={`${bar} w-5/6`} />
         <div className={`${bar} w-2/3`} />
