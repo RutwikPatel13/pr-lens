@@ -1,11 +1,15 @@
 import type { FileStatus, PrAnalysis, PrData, PrResponse, SkipReason } from '@pr-lens/shared';
+import { useState } from 'react';
+import { fetchThreads } from '../lib/api';
 import { jumpToLine } from '../lib/jump-to-line';
 import { shortPath } from '../lib/paths';
 import { AiSummary, AnalysisFooter } from './AiSummary';
+import { AskTab } from './AskTab';
+import { DiscussionTab } from './DiscussionTab';
 import { mergeFlags } from './flags';
 import { RiskFlags } from './RiskFlags';
 import { Section, SeverityCount } from './ui';
-import type { FetchState } from './usePrFetch';
+import { usePrFetch, type FetchState } from './usePrFetch';
 
 const STATUS: Record<FileStatus, { letter: string; className: string }> = {
   added: { letter: 'A', className: 'text-success' },
@@ -30,15 +34,22 @@ const SKIP_LABEL: Record<SkipReason, string> = {
   snapshot: 'snapshot',
 };
 
+type Tab = 'overview' | 'ask' | 'discussion';
+
 type Props = {
+  token: string;
   response: PrResponse;
   analysis: FetchState<PrAnalysis>;
   previousAnalysis: PrAnalysis | null;
   onRerun: () => void;
 };
 
-export function PrDetails({ response, analysis, previousAnalysis, onRerun }: Props) {
+export function PrDetails({ token, response, analysis, previousAnalysis, onRerun }: Props) {
   const { pr: data, risk } = response;
+  const [tab, setTab] = useState<Tab>('overview');
+  // Loaded up front so the Discussion tab can show how many threads are still open.
+  const threads = usePrFetch(fetchThreads, data, token);
+  const openThreads = threads.status === 'loaded' ? threads.data.filter((t) => !t.resolved).length : 0;
   const shownAnalysis = analysis.status === 'loaded' ? analysis.data : previousAnalysis;
   const merged = mergeFlags(risk.flags, shownAnalysis?.flags ?? []);
   const missingPatches = data.files.filter((f) => f.patch === null).length;
@@ -72,6 +83,32 @@ export function PrDetails({ response, analysis, previousAnalysis, onRerun }: Pro
         )}
       </section>
 
+      <div role="tablist" aria-label="Sections" className="flex gap-1 border-b border-line px-4">
+        {(
+          [
+            ['overview', 'Overview', null],
+            ['ask', 'Ask', null],
+            ['discussion', 'Discussion', openThreads > 0 ? openThreads : null],
+          ] as const
+        ).map(([id, label, count]) => (
+          <button
+            key={id}
+            role="tab"
+            id={`tab-${id}`}
+            aria-selected={tab === id}
+            aria-controls={`panel-${id}`}
+            onClick={() => setTab(id)}
+            className={`-mb-px flex cursor-pointer items-center gap-1.5 border-b-2 px-2.5 py-2 text-[13px] ${
+              tab === id ? 'border-tab-active font-semibold text-fg' : 'border-transparent text-muted hover:text-fg'
+            }`}
+          >
+            {label}
+            {count !== null && <span className="rounded-full bg-inset px-1.5 text-[11px] font-semibold text-fg">{count}</span>}
+          </button>
+        ))}
+      </div>
+
+      <div role="tabpanel" id="panel-overview" aria-labelledby="tab-overview" hidden={tab !== 'overview'} className="flex flex-1 flex-col">
       {data.linkedIssues.length > 0 && (
         <Section title="Linked issues">
           <ul className="m-0 flex list-none flex-col gap-1 p-0">
@@ -136,6 +173,15 @@ export function PrDetails({ response, analysis, previousAnalysis, onRerun }: Pro
       </details>
 
       <AnalysisFooter analysis={shownAnalysis} busy={analysis.status === 'loading'} onRerun={onRerun} />
+      </div>
+
+      {/* All tabs stay mounted, so an Ask conversation survives switching tabs. */}
+      <div role="tabpanel" id="panel-ask" aria-labelledby="tab-ask" hidden={tab !== 'ask'} className="flex flex-1 flex-col">
+        <AskTab pr={data} token={token} />
+      </div>
+      <div role="tabpanel" id="panel-discussion" aria-labelledby="tab-discussion" hidden={tab !== 'discussion'}>
+        <DiscussionTab pr={data} token={token} threads={threads} />
+      </div>
     </div>
   );
 }

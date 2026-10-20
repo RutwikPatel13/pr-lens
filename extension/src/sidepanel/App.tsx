@@ -87,6 +87,7 @@ function PrPanel({ pr, token, onBadToken }: { pr: PrRef; token: string; onBadTok
   if (state.status === 'loaded') {
     return (
       <PrDetails
+        token={token}
         response={state.data}
         analysis={analysis}
         previousAnalysis={lastAnalysis}
