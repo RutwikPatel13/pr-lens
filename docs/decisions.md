@@ -223,3 +223,16 @@ reviewer's browser; direct API calls are limited by needing a GitHub token. Per-
 limits (keyed by the GitHub login behind the token) are the next step if that's ever abused.
 
 Production builds of the extension default to the deployed URL; dev builds to localhost.
+
+## 2026-10-20: Panel redesign: GitHub-native, light and dark
+
+Picked from three mocked-up directions (GitHub-native, dark dev tool, risk-first
+briefing). The panel sits right next to github.com, so it borrows GitHub's Primer
+colors and type and reads as part of the page in either theme. Structural changes
+from the old panel: severity counts under the title, risks grouped by file (most PRs
+concentrate risk in a few files), short file names with the full path on hover, and
+the model/cache/Re-run line pinned to the bottom.
+
+Colors are CSS variables switched by `data-theme`, exposed to Tailwind as tokens, so
+dark mode is one set of values rather than a second set of components. The theme
+follows the OS by default (as GitHub does), with a Light/Dark override in Settings.

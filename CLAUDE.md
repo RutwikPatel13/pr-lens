@@ -72,6 +72,9 @@ manifest change, the extension must be reloaded in chrome://extensions.
 - `async/await`. A single `.then` is fine where `await` can't go: React effects and the
   `chrome.runtime.onMessage` callback.
 - React function components and hooks. Tailwind classes inline.
+- Colors only through the theme tokens in `sidepanel/index.css` (`bg-canvas`, `text-muted`,
+  `border-line`, `bg-high-bg`...), never Tailwind palette classes like `text-gray-500`, or
+  dark mode breaks. Shared pieces (Section, badges, icons) live in `sidepanel/ui.tsx`.
 - The panel talks to the backend only through `extension/src/lib/api.ts`, and to
   `chrome.storage` only through `lib/settings.ts`.
 - Comments explain why, not what. Measured facts (free-tier limits, GitHub quirks) get a date.

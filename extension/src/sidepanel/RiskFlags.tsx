@@ -32,7 +32,7 @@ export function RiskFlags({ pr, merged }: { pr: PrRef; merged: MergedFlags }) {
         <p className="m-0 text-xs text-muted">No rule-based flags. That doesn't mean it's safe, just that nothing obvious matched.</p>
       ) : (
         groups.map((group) => {
-          const { dir, name } = splitPath(group.path);
+          const { name } = splitPath(group.path);
           return (
             <div key={group.path} className="overflow-hidden rounded-md border border-line">
               <button
@@ -41,8 +41,7 @@ export function RiskFlags({ pr, merged }: { pr: PrRef; merged: MergedFlags }) {
                 className="flex w-full cursor-pointer items-center gap-1.5 border-b border-line bg-subtle px-3 py-2 text-left text-muted hover:text-fg"
               >
                 <FileIcon />
-                <span className="font-mono text-xs font-semibold text-fg">{shortName(name)}</span>
-                {dir !== '' && <span className="min-w-0 truncate text-xs">{dir}</span>}
+                <span className="min-w-0 truncate font-mono text-xs font-semibold text-fg">{shortName(name)}</span>
               </button>
               {group.flags.map((flag, i) => (
                 <FlagRow
