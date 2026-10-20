@@ -13,9 +13,9 @@ export class GitHubError extends Error {
   }
 }
 
-function headers(token: string): HeadersInit {
+function headers(token: string, accept = 'application/vnd.github+json'): HeadersInit {
   return {
-    Accept: 'application/vnd.github+json',
+    Accept: accept,
     Authorization: `Bearer ${token}`,
     'X-GitHub-Api-Version': '2022-11-28',
     // GitHub rejects requests without a User-Agent, and Workers' fetch doesn't send one.
@@ -51,9 +51,10 @@ function toGitHubError(res: Response): GitHubError {
   return new GitHubError('github_error', `GitHub returned HTTP ${res.status}.`);
 }
 
-export async function githubGet<T>(token: string, pathOrUrl: string): Promise<{ data: T; res: Response }> {
+// accept: a different media type, e.g. code search's text-match fragments.
+export async function githubGet<T>(token: string, pathOrUrl: string, accept?: string): Promise<{ data: T; res: Response }> {
   const url = pathOrUrl.startsWith('https://') ? pathOrUrl : API_URL + pathOrUrl;
-  const res = await fetch(url, { headers: headers(token) });
+  const res = await fetch(url, { headers: headers(token, accept) });
   if (!res.ok) throw toGitHubError(res);
   // The response shape is GitHub's documented one; T only names the fields we read.
   return { data: (await res.json()) as T, res };

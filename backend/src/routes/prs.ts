@@ -1,8 +1,11 @@
-import type { ApiErrorBody, PrAnalysis, PrRef, PrResponse } from '@pr-lens/shared';
+import type { ApiErrorBody, AskResponse, PrAnalysis, PrRef, PrResponse, ReviewThread, SuggestedReply } from '@pr-lens/shared';
 import { Hono, type Context } from 'hono';
+import { z } from 'zod';
+import { askPr, suggestReply, type AskDeps } from '../ask/pipeline';
 import { kvCache } from '../cache/json-cache';
 import type { AppEnv } from '../env';
 import { fetchPrDetails, fetchPullMeta } from '../github/pull-request';
+import { fetchReviewThreads, fileAtCommit, searchCode } from '../github/repo';
 import { providersFromEnv } from '../llm/config';
 import { FallbackLlm } from '../llm/fallback';
 import { analyzePr } from '../llm/pipeline';
@@ -27,7 +30,7 @@ function prService(env: AppEnv, token: string): PrService {
   });
 }
 
-// Shared by both routes: the reviewer's token and a valid owner/repo/number.
+// Shared by every route: the reviewer's token and a valid owner/repo/number.
 function readRequest(c: Context): Request {
   // The reviewer's own GitHub token. Passed through to GitHub, never stored or logged.
   const token = c.req.header('X-GitHub-Token');
@@ -58,4 +61,60 @@ prs.get('/:owner/:repo/:number/analysis', async (c) => {
 
   const refresh = c.req.query('refresh') === '1';
   return c.json<PrAnalysis>(await prService(c.env, req.token).getAnalysis(req.ref, { refresh }));
+});
+
+function askDeps(token: string, ref: PrRef, headSha: string): AskDeps {
+  return {
+    fileAtCommit: (path) => fileAtCommit(token, ref, path, headSha),
+    searchCode: (term) => searchCode(token, ref, term),
+  };
+}
+
+const AskBody = z.object({
+  question: z.string().trim().min(1).max(500),
+  history: z
+    .array(z.object({ question: z.string().max(500), answer: z.string().max(4_000) }))
+    .max(20)
+    .default([]),
+});
+
+function invalidBody(c: Context, message: string): Response {
+  return c.json<ApiErrorBody>({ error: { code: 'invalid_request', message } }, 400);
+}
+
+// Ask the PR: plan what to read, gather it from GitHub, answer with checked sources. Not cached.
+prs.post('/:owner/:repo/:number/ask', async (c) => {
+  const req = readRequest(c);
+  if ('error' in req) return req.error;
+  const body = AskBody.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) return invalidBody(c, 'Send {"question": "...", "history": [...]} with a question under 500 characters.');
+
+  const llm = new FallbackLlm(providersFromEnv(c.env));
+  const { pr, risk } = await prService(c.env, req.token).getPr(req.ref);
+  return c.json<AskResponse>(await askPr(llm, askDeps(req.token, req.ref, pr.headSha), pr, risk, body.data));
+});
+
+// Review threads (inline comments) on the PR, newest state from GitHub. Not cached.
+prs.get('/:owner/:repo/:number/threads', async (c) => {
+  const req = readRequest(c);
+  if ('error' in req) return req.error;
+  return c.json<ReviewThread[]>(await fetchReviewThreads(req.token, req.ref));
+});
+
+const ReplyBody = z.object({ threadId: z.string().min(1).max(200) });
+
+// A suggested next reply for one review thread. Copy-only in the panel; nothing is posted.
+prs.post('/:owner/:repo/:number/threads/suggest-reply', async (c) => {
+  const req = readRequest(c);
+  if ('error' in req) return req.error;
+  const body = ReplyBody.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) return invalidBody(c, 'Send {"threadId": "..."}.');
+
+  const llm = new FallbackLlm(providersFromEnv(c.env));
+  const [{ pr }, threads] = await Promise.all([prService(c.env, req.token).getPr(req.ref), fetchReviewThreads(req.token, req.ref)]);
+  const thread = threads.find((t) => t.id === body.data.threadId);
+  if (thread === undefined) {
+    return c.json<ApiErrorBody>({ error: { code: 'not_found', message: 'That review thread is no longer on this PR.' } }, 404);
+  }
+  return c.json<SuggestedReply>(await suggestReply(llm, askDeps(req.token, req.ref, pr.headSha), pr, thread));
 });

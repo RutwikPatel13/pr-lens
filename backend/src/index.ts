@@ -15,8 +15,8 @@ app.use(
   '/api/*',
   cors({
     origin: (origin, c) => allowedOrigin(origin, c.env.ALLOWED_EXTENSION_IDS),
-    allowHeaders: ['X-GitHub-Token'],
-    allowMethods: ['GET'],
+    allowHeaders: ['X-GitHub-Token', 'Content-Type'],
+    allowMethods: ['GET', 'POST'],
   }),
 );
 

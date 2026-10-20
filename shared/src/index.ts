@@ -159,3 +159,49 @@ export type HealthResponse = {
   llmProviders: string[];
   cache: boolean;
 };
+
+// Ask the PR. A source is a place the answer relies on: a PR file opens on the Files tab
+// (url null); anything else links to GitHub (url set).
+export type AskSource = {
+  path: string;
+  line: number | null;
+  url: string | null;
+};
+
+export type AskTurn = { question: string; answer: string };
+
+export type AskRequest = {
+  question: string;
+  // Earlier turns in this conversation, oldest first. Only the last few are sent to the model.
+  history: AskTurn[];
+};
+
+export type AskResponse = {
+  answer: string;
+  sources: AskSource[];
+  // What was looked at, in plain words, so the reader knows what the answer is based on.
+  searched: string[];
+  models: string[];
+};
+
+export type ThreadComment = {
+  author: string | null;
+  body: string;
+  createdAt: string;
+  url: string;
+};
+
+export type ReviewThread = {
+  id: string;
+  path: string;
+  line: number | null;
+  resolved: boolean;
+  outdated: boolean;
+  comments: ThreadComment[];
+};
+
+export type SuggestedReply = {
+  reply: string;
+  reason: string;
+  models: string[];
+};
