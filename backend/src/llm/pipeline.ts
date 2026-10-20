@@ -62,7 +62,12 @@ function normalizeReviewOrder(steps: { path: string; reason: string }[], notes: 
   return ordered;
 }
 
-export async function analyzePr(llm: FallbackLlm, pr: PrData, risk: RiskReport, limits: ChunkLimits = DEFAULT_LIMITS): Promise<PrAnalysis> {
+export async function analyzePr(
+  llm: FallbackLlm,
+  pr: PrData,
+  risk: RiskReport,
+  limits: ChunkLimits = DEFAULT_LIMITS,
+): Promise<Omit<PrAnalysis, 'generatedAt' | 'cached'>> {
   const plan = planChunks(pr, risk, limits);
   const models: string[] = [];
   const promptFiles = new Map(plan.chunks.flat().map((f) => [f.path, f]));

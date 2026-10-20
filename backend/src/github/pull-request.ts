@@ -10,7 +10,7 @@ type GhPull = {
   merged_at: string | null;
   user: { login: string } | null;
   head: { sha: string; ref: string };
-  base: { ref: string };
+  base: { ref: string; repo: { private: boolean } };
   additions: number;
   deletions: number;
   commits: number;
@@ -54,28 +54,53 @@ const LINKED_ISSUES_QUERY = `
 const MAX_COMMIT_PAGES = 3;
 const MAX_FILE_PAGES = 30;
 
-export async function fetchPrData(token: string, ref: PrRef): Promise<PrData> {
-  const base = `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}`;
+// The cheap part: one request, always fetched fresh. Title, description and state can change
+// without a new commit, and headSha decides whether the cached details still apply.
+export type PullMeta = {
+  pr: Omit<PrData, 'commits' | 'files' | 'linkedIssues' | 'truncated'>;
+  commitCount: number;
+  fileCount: number;
+  isPublic: boolean;
+};
 
-  const [{ data: pull }, commits, files, linked] = await Promise.all([
-    githubGet<GhPull>(token, base),
+// The expensive part: paginated commits and files, plus linked issues. Cacheable by headSha.
+export type PrDetails = Pick<PrData, 'commits' | 'files' | 'linkedIssues' | 'truncated'>;
+
+const pullPath = (ref: PrRef) => `/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}`;
+
+export async function fetchPullMeta(token: string, ref: PrRef): Promise<PullMeta> {
+  const { data: pull } = await githubGet<GhPull>(token, pullPath(ref));
+  return {
+    pr: {
+      ...ref,
+      title: pull.title,
+      body: pull.body ?? '',
+      author: pull.user?.login ?? null,
+      url: pull.html_url,
+      state: pull.merged_at !== null ? 'merged' : pull.state,
+      headSha: pull.head.sha,
+      baseRef: pull.base.ref,
+      headRef: pull.head.ref,
+      additions: pull.additions,
+      deletions: pull.deletions,
+    },
+    commitCount: pull.commits,
+    fileCount: pull.changed_files,
+    isPublic: !pull.base.repo.private,
+  };
+}
+
+// If a commit is pushed between fetchPullMeta and this call, these details are from the newer
+// head. Rare, and the next request (with the new headSha) misses the cache and refetches.
+export async function fetchPrDetails(token: string, ref: PrRef, meta: PullMeta): Promise<PrDetails> {
+  const base = pullPath(ref);
+  const [commits, files, linked] = await Promise.all([
     githubGetAll<GhCommit>(token, `${base}/commits?per_page=100`, MAX_COMMIT_PAGES),
     githubGetAll<GhFile>(token, `${base}/files?per_page=100`, MAX_FILE_PAGES),
     githubGraphql<GhLinkedIssues>(token, LINKED_ISSUES_QUERY, ref),
   ]);
 
   return {
-    ...ref,
-    title: pull.title,
-    body: pull.body ?? '',
-    author: pull.user?.login ?? null,
-    url: pull.html_url,
-    state: pull.merged_at !== null ? 'merged' : pull.state,
-    headSha: pull.head.sha,
-    baseRef: pull.base.ref,
-    headRef: pull.head.ref,
-    additions: pull.additions,
-    deletions: pull.deletions,
     commits: commits.map((c) => ({
       sha: c.sha,
       message: c.commit.message,
@@ -91,8 +116,8 @@ export async function fetchPrData(token: string, ref: PrRef): Promise<PrData> {
     })),
     linkedIssues: linked.repository?.pullRequest?.closingIssuesReferences.nodes ?? [],
     truncated: {
-      commits: commits.length < pull.commits,
-      files: files.length < pull.changed_files,
+      commits: commits.length < meta.commitCount,
+      files: files.length < meta.fileCount,
     },
   };
 }

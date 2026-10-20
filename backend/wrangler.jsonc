@@ -3,5 +3,8 @@
   "name": "pr-lens-backend",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-01",
-  "observability": { "enabled": true }
+  "observability": { "enabled": true },
+  // PR details and LLM analyses, keyed by head commit. No id: wrangler dev uses local
+  // storage, and wrangler deploy creates the namespace on first deploy.
+  "kv_namespaces": [{ "binding": "CACHE" }]
 }

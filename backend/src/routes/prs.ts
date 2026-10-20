@@ -1,19 +1,31 @@
 import type { ApiErrorBody, PrAnalysis, PrRef, PrResponse } from '@pr-lens/shared';
 import { Hono, type Context } from 'hono';
-import { fetchPrData } from '../github/pull-request';
-import type { LlmEnv } from '../llm/config';
+import { kvCache } from '../cache/json-cache';
+import type { AppEnv } from '../env';
+import { fetchPrDetails, fetchPullMeta } from '../github/pull-request';
 import { providersFromEnv } from '../llm/config';
 import { FallbackLlm } from '../llm/fallback';
 import { analyzePr } from '../llm/pipeline';
-import { analyzeRisk } from '../risk/engine';
+import { PrService } from '../pr-service';
 
 const OWNER = /^[A-Za-z0-9-]+$/;
 const REPO = /^[A-Za-z0-9._-]+$/;
 const NUMBER = /^\d+$/;
 
-export const prs = new Hono<{ Bindings: LlmEnv }>();
+export const prs = new Hono<{ Bindings: AppEnv }>();
 
 type Request = { token: string; ref: PrRef } | { error: Response };
+
+function prService(env: AppEnv, token: string): PrService {
+  return new PrService({
+    fetchMeta: (ref) => fetchPullMeta(token, ref),
+    fetchDetails: (ref, meta) => fetchPrDetails(token, ref, meta),
+    // Built only on a cache miss, so cached analyses still load if no LLM key is configured.
+    analyze: (pr, risk) => analyzePr(new FallbackLlm(providersFromEnv(env)), pr, risk),
+    cache: env.CACHE === undefined ? null : kvCache(env.CACHE),
+    now: () => new Date(),
+  });
+}
 
 // Shared by both routes: the reviewer's token and a valid owner/repo/number.
 function readRequest(c: Context): Request {
@@ -35,16 +47,15 @@ prs.get('/:owner/:repo/:number', async (c) => {
   const req = readRequest(c);
   if ('error' in req) return req.error;
 
-  const pr = await fetchPrData(req.token, req.ref);
-  return c.json<PrResponse>({ pr, risk: analyzeRisk(pr.files) });
+  return c.json<PrResponse>(await prService(c.env, req.token).getPr(req.ref));
 });
 
-// Slow: LLM summary, review order and flags (map/reduce over the diff).
+// Slow on a cache miss: LLM summary, review order and flags (map/reduce over the diff).
+// ?refresh=1 skips the cached analysis and runs the model again.
 prs.get('/:owner/:repo/:number/analysis', async (c) => {
   const req = readRequest(c);
   if ('error' in req) return req.error;
 
-  const llm = new FallbackLlm(providersFromEnv(c.env));
-  const pr = await fetchPrData(req.token, req.ref);
-  return c.json<PrAnalysis>(await analyzePr(llm, pr, analyzeRisk(pr.files)));
+  const refresh = c.req.query('refresh') === '1';
+  return c.json<PrAnalysis>(await prService(c.env, req.token).getAnalysis(req.ref, { refresh }));
 });

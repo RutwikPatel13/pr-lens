@@ -148,4 +148,7 @@ export type PrAnalysis = {
   truncated: string[];
   // Which provider/model handled the calls, in the order they were used.
   models: string[];
+  // ISO timestamp of when the model ran. Older than now when served from the cache.
+  generatedAt: string;
+  cached: boolean;
 };

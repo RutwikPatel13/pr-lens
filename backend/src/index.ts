@@ -3,11 +3,11 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { GitHubError, type GitHubErrorCode } from './github/client';
-import type { LlmEnv } from './llm/config';
+import type { AppEnv } from './env';
 import { AllProvidersFailedError, LlmNotConfiguredError } from './llm/fallback';
 import { prs } from './routes/prs';
 
-const app = new Hono<{ Bindings: LlmEnv }>();
+const app = new Hono<{ Bindings: AppEnv }>();
 
 app.use(
   '/api/*',
