@@ -35,9 +35,11 @@ caching, (6) polish: loading and error states, settings, README and demo.
 
 ## Version 2 (one at a time)
 
+Done: Ask the PR (questions answered from the diff, files and code search) and a Discussion
+tab with suggested replies to review threads (copy only, nothing posted).
+
 - GitHub OAuth so private repos work without a pasted token. Needs per-user access checks
   before private PRs can be cached, and a look at whether free LLM tiers may use the data.
-- Ask the PR: free-form questions; the backend pulls extra file context from the repo.
 - Custom rules per user or team, e.g. "always flag anything under billing/".
 - GitLab merge request support.
 

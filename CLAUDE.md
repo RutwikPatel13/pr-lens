@@ -29,7 +29,9 @@ extension/src/
                   and scrolling the Files tab to a line
   lib/            api client, settings storage, GitHub anchor links, messages
 backend/src/
-  routes/prs.ts   GET /api/prs/:o/:r/:n (PR + rule flags), .../analysis (LLM)
+  routes/prs.ts   under /api/prs/:o/:r/:n (header X-GitHub-Token): GET (PR + rule flags),
+                  GET analysis (LLM, cached), POST ask, GET threads, POST threads/suggest-reply
+  ask/            Ask the PR: plan -> gather (diff, file excerpts, code search) -> answer
   pr-service.ts   GitHub fetch + cache + analysis orchestration
   github/         REST + GraphQL client
   risk/           rule engine: patch parsing, path words, rules
@@ -118,7 +120,10 @@ manifest change, the extension must be reloaded in chrome://extensions.
   free tier is often overloaded (503s, ~60s calls). Re-check model IDs with each provider's
   model list before changing defaults; models get retired.
 - `backend/worker-configuration.d.ts` is generated and git-ignored; `typecheck` regenerates it.
-- Tailwind's `uppercase` changes `innerText`: scripted UI checks see "RISK FLAGS".
+- Anything from a repo or its comments that goes into a prompt is wrapped with `untrusted()`
+  (`backend/src/ask/prompts.ts`). Keep it that way: PR text can contain instructions.
+- Scripted browser checks: save test settings from an extension page, not the service worker
+  (it can run before `chrome.storage` exists), and don't `type()` into a background tab.
 
 ---
 
