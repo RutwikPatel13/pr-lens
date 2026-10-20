@@ -81,7 +81,13 @@ function toSources(raw: RawAnswer['sources'], blocks: ContextBlock[], pr: PrData
   return sources;
 }
 
-export async function askPr(llm: FallbackLlm, deps: AskDeps, pr: PrData, risk: RiskReport, request: AskRequest): Promise<AskResponse> {
+export async function askPr(
+  llm: FallbackLlm,
+  deps: AskDeps,
+  pr: PrData,
+  risk: RiskReport,
+  request: AskRequest,
+): Promise<Omit<AskResponse, 'cached'>> {
   const models: string[] = [];
   const fileList = prFileList(pr, risk);
 
@@ -101,7 +107,12 @@ export async function askPr(llm: FallbackLlm, deps: AskDeps, pr: PrData, risk: R
   };
 }
 
-export async function suggestReply(llm: FallbackLlm, deps: AskDeps, pr: PrData, thread: ReviewThread): Promise<SuggestedReply> {
+export async function suggestReply(
+  llm: FallbackLlm,
+  deps: AskDeps,
+  pr: PrData,
+  thread: ReviewThread,
+): Promise<Omit<SuggestedReply, 'cached'>> {
   const blocks: ContextBlock[] = [];
   const prFile = pr.files.find((f) => f.path === thread.path);
   const content = await deps.fileAtCommit(thread.path);

@@ -286,3 +286,18 @@ fine-grained tokens can't write to other people's repos anyway.
 
 The panel uses tabs (Overview / Ask / Discussion), chosen from mockups over a pinned Ask
 box. The overview stays as it was, and a conversation gets room.
+
+## 2026-10-20: Cache first questions and suggested replies; keep conversations per session
+
+Superseding "no caching" for Ask above:
+- **Ask:** first questions in a conversation are cached per commit, keyed by a hash of the
+  question normalized for case and spacing. That covers the three suggested questions, which
+  every reviewer gets, plus common typed ones. Follow-ups still always run, because their
+  answer depends on the conversation before them.
+- **Suggested replies:** cached per thread, keyed by its comment count and latest comment
+  time (plus the head commit), so a new reply in the thread produces a fresh suggestion.
+- **Conversations:** the panel keeps each PR's conversation in `chrome.storage.session`,
+  keyed by commit. It survives closing the panel and is gone when the browser closes.
+
+As everywhere else, the cache is only used for public repos, and failures are never cached.
+Measured locally: a suggested question went from 6.5s to 0.5s, and a reply from 1.5s to 0.7s.

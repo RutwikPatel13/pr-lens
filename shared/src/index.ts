@@ -182,6 +182,8 @@ export type AskResponse = {
   // What was looked at, in plain words, so the reader knows what the answer is based on.
   searched: string[];
   models: string[];
+  // First questions are cached per commit; true when this answer came from the cache.
+  cached: boolean;
 };
 
 export type ThreadComment = {
@@ -204,4 +206,6 @@ export type SuggestedReply = {
   reply: string;
   reason: string;
   models: string[];
+  // Cached until the thread gets a new comment or the PR a new commit.
+  cached: boolean;
 };

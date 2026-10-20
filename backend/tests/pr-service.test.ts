@@ -1,7 +1,7 @@
 import type { PrAnalysis } from '@pr-lens/shared';
 import { describe, expect, it } from 'vitest';
 import type { JsonCache } from '../src/cache/json-cache';
-import { analysisKey } from '../src/cache/keys';
+import { analysisKey, askKey, replyKey } from '../src/cache/keys';
 import type { PrDetails, PullMeta } from '../src/github/pull-request';
 import { PrService, type PrServiceDeps } from '../src/pr-service';
 import { file, patch } from './risk/helpers';
@@ -133,5 +133,47 @@ describe('PrService caching', () => {
     await service.getAnalysis(ref);
     await service.getAnalysis(ref);
     expect(calls.analyze).toBe(2);
+  });
+});
+
+describe('PrService.cached (Ask answers, suggested replies)', () => {
+  it('computes once, then serves the stored value', async () => {
+    const { service } = setup();
+    let runs = 0;
+    const compute = async () => (runs++, { answer: 'a' });
+    expect(await service.cached('k', true, compute)).toEqual({ answer: 'a', cached: false });
+    expect(await service.cached('k', true, compute)).toEqual({ answer: 'a', cached: true });
+    expect(runs).toBe(1);
+  });
+
+  it('never caches for a private repo', async () => {
+    const { service, cache } = setup();
+    let runs = 0;
+    const compute = async () => (runs++, { answer: 'a' });
+    await service.cached('k', false, compute);
+    await service.cached('k', false, compute);
+    expect(runs).toBe(2);
+    expect(cache.store.size).toBe(0);
+  });
+
+  it('stores nothing when the compute fails', async () => {
+    const { service, cache } = setup();
+    await expect(service.cached('k', true, async () => Promise.reject(new Error('busy')))).rejects.toThrow('busy');
+    expect(cache.store.has('k')).toBe(false);
+  });
+});
+
+describe('Ask and reply cache keys', () => {
+  it('treats questions differing only in case and spacing as the same', async () => {
+    const a = await askKey(ref, 'sha1', 'What could this break?');
+    expect(await askKey(ref, 'sha1', '  what could   THIS break? ')).toBe(a);
+    expect(await askKey(ref, 'sha1', 'What could this break')).not.toBe(a);
+    expect(await askKey(ref, 'sha2', 'What could this break?')).not.toBe(a);
+  });
+
+  it('changes the reply key when the thread gets a new comment', () => {
+    const before = replyKey(ref, 'sha1', 'T1', 2, '2026-10-01T00:00:00Z');
+    expect(replyKey(ref, 'sha1', 'T1', 3, '2026-10-02T00:00:00Z')).not.toBe(before);
+    expect(replyKey(ref, 'sha2', 'T1', 2, '2026-10-01T00:00:00Z')).not.toBe(before);
   });
 });

@@ -3,6 +3,7 @@ import { Hono, type Context } from 'hono';
 import { z } from 'zod';
 import { askPr, suggestReply, type AskDeps } from '../ask/pipeline';
 import { kvCache } from '../cache/json-cache';
+import { askKey, replyKey } from '../cache/keys';
 import type { AppEnv } from '../env';
 import { fetchPrDetails, fetchPullMeta } from '../github/pull-request';
 import { fetchReviewThreads, fileAtCommit, searchCode } from '../github/repo';
@@ -89,9 +90,16 @@ prs.post('/:owner/:repo/:number/ask', async (c) => {
   const body = AskBody.safeParse(await c.req.json().catch(() => null));
   if (!body.success) return invalidBody(c, 'Send {"question": "...", "history": [...]} with a question under 500 characters.');
 
-  const llm = new FallbackLlm(providersFromEnv(c.env));
-  const { pr, risk } = await prService(c.env, req.token).getPr(req.ref);
-  return c.json<AskResponse>(await askPr(llm, askDeps(req.token, req.ref, pr.headSha), pr, risk, body.data));
+  const service = prService(c.env, req.token);
+  const { pr, risk, isPublic } = await service.getPrContext(req.ref);
+  // Built inside run(), so a cached answer still loads if no LLM key is configured.
+  const run = () => askPr(new FallbackLlm(providersFromEnv(c.env)), askDeps(req.token, req.ref, pr.headSha), pr, risk, body.data);
+
+  // First questions (the suggested ones, or any common question) are cached per commit.
+  // Follow-ups depend on the conversation, so they always run.
+  if (body.data.history.length > 0) return c.json<AskResponse>({ ...(await run()), cached: false });
+  const key = await askKey(req.ref, pr.headSha, body.data.question);
+  return c.json<AskResponse>(await service.cached(key, isPublic, run));
 });
 
 // Review threads (inline comments) on the PR, newest state from GitHub. Not cached.
@@ -110,11 +118,14 @@ prs.post('/:owner/:repo/:number/threads/suggest-reply', async (c) => {
   const body = ReplyBody.safeParse(await c.req.json().catch(() => null));
   if (!body.success) return invalidBody(c, 'Send {"threadId": "..."}.');
 
-  const llm = new FallbackLlm(providersFromEnv(c.env));
-  const [{ pr }, threads] = await Promise.all([prService(c.env, req.token).getPr(req.ref), fetchReviewThreads(req.token, req.ref)]);
+  const service = prService(c.env, req.token);
+  const [{ pr, isPublic }, threads] = await Promise.all([service.getPrContext(req.ref), fetchReviewThreads(req.token, req.ref)]);
   const thread = threads.find((t) => t.id === body.data.threadId);
   if (thread === undefined) {
     return c.json<ApiErrorBody>({ error: { code: 'not_found', message: 'That review thread is no longer on this PR.' } }, 404);
   }
-  return c.json<SuggestedReply>(await suggestReply(llm, askDeps(req.token, req.ref, pr.headSha), pr, thread));
+  const last = thread.comments[thread.comments.length - 1];
+  const key = replyKey(req.ref, pr.headSha, thread.id, thread.comments.length, last?.createdAt ?? '');
+  const run = () => suggestReply(new FallbackLlm(providersFromEnv(c.env)), askDeps(req.token, req.ref, pr.headSha), pr, thread);
+  return c.json<SuggestedReply>(await service.cached(key, isPublic, run));
 });

@@ -140,7 +140,10 @@ function ThreadCard({ pr, token, thread }: { pr: PrRef; token: string; thread: R
               onChange={(e) => setReply({ ...reply, text: e.target.value, copied: false })}
               className="w-full resize-y rounded-md border border-line bg-canvas p-2 text-[13px] text-fg"
             />
-            <span className="text-xs text-muted">Why: {reply.reply.reason}</span>
+            <span className="text-xs text-muted">
+              Why: {reply.reply.reason}
+              {reply.reply.cached && ' (saved; redrafted when the thread gets a new comment)'}
+            </span>
             <div className="flex gap-2">
               <button
                 onClick={() => void copy(reply.text)}

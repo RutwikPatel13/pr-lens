@@ -21,9 +21,27 @@ export class PrService {
   constructor(private readonly deps: PrServiceDeps) {}
 
   async getPr(ref: PrRef): Promise<PrResponse> {
+    const { pr, risk } = await this.getPrContext(ref);
+    return { pr, risk };
+  }
+
+  // PR data plus whether results about it may be cached, for routes that cache their own
+  // results (Ask answers, suggested replies).
+  async getPrContext(ref: PrRef): Promise<{ pr: PrData; risk: RiskReport; isPublic: boolean }> {
     const meta = await this.deps.fetchMeta(ref);
     const { details, risk } = await this.detailsAndRisk(ref, meta);
-    return { pr: { ...meta.pr, ...details }, risk };
+    return { pr: { ...meta.pr, ...details }, risk, isPublic: meta.isPublic };
+  }
+
+  // Returns the cached value for key, or computes and stores it. Public repos only, like
+  // everything else here; a failed compute stores nothing.
+  async cached<T extends object>(key: string, isPublic: boolean, compute: () => Promise<T>): Promise<T & { cached: boolean }> {
+    const cache = isPublic ? this.deps.cache : null;
+    const hit = await cache?.get<T>(key);
+    if (hit !== undefined && hit !== null) return { ...hit, cached: true };
+    const value = await compute();
+    await cache?.put(key, value, CACHE_TTL_SECONDS);
+    return { ...value, cached: false };
   }
 
   // refresh skips the cache read (the reviewer asked for a new analysis) but still writes.

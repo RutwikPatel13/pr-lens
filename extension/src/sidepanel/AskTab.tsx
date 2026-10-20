@@ -1,6 +1,7 @@
-import type { AskResponse, AskSource, PrRef } from '@pr-lens/shared';
+import type { AskResponse, AskSource, PrData, PrRef } from '@pr-lens/shared';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ApiError, askPr } from '../lib/api';
+import { loadConversation, saveConversation } from '../lib/conversation';
 import { jumpToLine } from '../lib/jump-to-line';
 import { Markdown } from '../lib/markdown';
 import { shortName, splitPath } from '../lib/paths';
@@ -47,8 +48,20 @@ function Elapsed() {
   return <>{seconds}s</>;
 }
 
-export function AskTab({ pr, token }: { pr: PrRef; token: string }) {
+export function AskTab({ pr, token }: { pr: PrData; token: string }) {
   const [turns, setTurns] = useState<Turn[]>([]);
+  // Restore this PR's conversation (same commit) from the session, then keep it saved.
+  const restored = useRef(false);
+  useEffect(() => {
+    void loadConversation(pr).then((saved) => {
+      restored.current = true;
+      if (saved.length > 0) setTurns((current) => (current.length === 0 ? saved.map((t) => ({ ...t, status: 'answered' as const })) : current));
+    });
+  }, [pr]);
+  useEffect(() => {
+    if (!restored.current) return;
+    void saveConversation(pr, turns.flatMap((t) => (t.status === 'answered' ? [{ question: t.question, response: t.response }] : [])));
+  }, [pr, turns]);
   const [draft, setDraft] = useState('');
   const busy = turns.some((t) => t.status === 'loading');
   const endRef = useRef<HTMLDivElement>(null);
@@ -134,7 +147,9 @@ export function AskTab({ pr, token }: { pr: PrRef; token: string }) {
                     ))}
                   </div>
                 )}
-                <p className="m-0 text-[11px] text-muted">Looked at: {turn.response.searched.join('; ')}.</p>
+                <p className="m-0 text-[11px] text-muted">
+                  {turn.response.cached && 'Saved answer for this commit. '}Looked at: {turn.response.searched.join('; ')}.
+                </p>
               </div>
             )}
           </div>
