@@ -37,7 +37,7 @@ function PrPanel({ pr, token, onBadToken }: { pr: PrRef; token: string; onBadTok
     return <p className="text-gray-500">Loading #{pr.number}…</p>;
   }
   if (state.status === 'loaded') {
-    return <PrDetails data={state.data} />;
+    return <PrDetails response={state.data} />;
   }
 
   const { code, message, resetAt } = state.error;

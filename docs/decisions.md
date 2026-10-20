@@ -78,3 +78,32 @@ themselves (Simplify, for example) inject their own UI into the page with a
 content script. That would work here too, but it means living inside GitHub's
 layout and markup, which this project avoids. Revisit if the click turns out to
 matter in practice.
+
+## 2026-10-19: Risk engine is path rules plus line rules over parsed patches
+
+Two rule shapes keep it easy to extend and test:
+- **Path rules** flag a whole file (migrations, auth, payments, CI/infra,
+  dependency manifests, committed `.env`, deleted test files) and point at its
+  first changed line.
+- **Line rules** run over the parsed patch with real old/new line numbers
+  (destructive SQL/ORM drops, irreversible migrations, key-like strings,
+  skipped or removed tests). Consecutive matching lines become one flag, capped
+  at 3 per rule per file.
+
+Path matching splits paths into words (including camelCase), so `LoginForm.tsx`
+counts as auth but `author/` doesn't. Lockfiles, generated, vendored and
+snapshot files skip all rules and are greyed out in the panel. The same
+classification will tell the LLM step what not to read.
+
+Every rule miss found on a real PR becomes a regression test first. The
+first was discourse#29187: `db/post_migrate/` and Discourse's `ColumnDropper`.
+
+## 2026-10-19: Jump-to-line needs the content script after all
+
+GitHub's Files tab has a stable anchor per line, `#diff-<sha256(path)>R<n>`
+(`L<n>` for the old side), but it doesn't scroll to it on load or on a hash
+change. It also renders diffs lazily, so the target moves as content above it
+appears. The content script finds the line by that id, re-scrolls until it's
+on screen and stopped moving, then highlights the row. It depends only on
+GitHub's anchor ids, not on their markup. The panel messages the content script
+when the tab is already on Files and navigates there otherwise.

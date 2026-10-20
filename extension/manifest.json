@@ -22,5 +22,16 @@
       },
       "description": "Open PR Lens"
     }
-  }
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://github.com/*"
+      ],
+      "js": [
+        "src/content/index.ts"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
 }

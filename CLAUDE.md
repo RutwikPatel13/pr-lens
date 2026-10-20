@@ -34,6 +34,7 @@ Chrome extension (Manifest V3)
   side panel       -> React + TypeScript UI; follows the active tab's URL
                       (tabs.onUpdated, so GitHub's client-side navigation is
                       seen) and calls the backend directly
+  content script   -> scrolls the Files tab to a flagged line and highlights it
 
 Backend API (Node + TypeScript + Hono, on Cloudflare Workers)
   GitHub client    -> fetches PR metadata, files, diff
@@ -105,7 +106,10 @@ npm run build -w extension       # typecheck + production build to extension/dis
 npm run typecheck -w extension
 npm run dev -w backend           # wrangler dev on http://localhost:8787 (the panel's default backend)
 npm run typecheck -w backend     # regenerates worker-configuration.d.ts, then tsc
+npm test -w backend              # vitest; one file: npm test -w backend -- tests/risk/engine.test.ts
 ```
+
+When a rule misses (or wrongly flags) something on a real PR, add that case to the "real PRs" block in `backend/tests/risk/engine.test.ts` before fixing the rule. Real PRs worth demoing go in `docs/demo-prs.md`.
 
 API: `GET /api/prs/:owner/:repo/:number` with header `X-GitHub-Token`. Errors are `{ error: { code, message } }` (types in `shared/src/index.ts`).
 

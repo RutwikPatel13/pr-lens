@@ -1,4 +1,4 @@
-import type { ApiErrorBody, ApiErrorCode, PrData, PrRef } from '@pr-lens/shared';
+import type { ApiErrorBody, ApiErrorCode, PrRef, PrResponse } from '@pr-lens/shared';
 
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:8787';
 
@@ -13,7 +13,7 @@ export class ApiError extends Error {
   }
 }
 
-export async function fetchPrData(pr: PrRef, token: string, signal: AbortSignal): Promise<PrData> {
+export async function fetchPrAnalysis(pr: PrRef, token: string, signal: AbortSignal): Promise<PrResponse> {
   const url = `${BACKEND_URL}/api/prs/${pr.owner}/${pr.repo}/${pr.number}`;
 
   let res: Response;
@@ -24,7 +24,7 @@ export async function fetchPrData(pr: PrRef, token: string, signal: AbortSignal)
     throw new ApiError('network', `Can't reach the PR Lens backend at ${BACKEND_URL}.`);
   }
 
-  if (res.ok) return (await res.json()) as PrData;
+  if (res.ok) return (await res.json()) as PrResponse;
 
   // A non-JSON error body (e.g. a proxy's HTML page) falls through to the generic error below.
   const body = (await res.json().catch(() => null)) as ApiErrorBody | null;

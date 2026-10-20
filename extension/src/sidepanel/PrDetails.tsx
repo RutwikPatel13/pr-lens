@@ -1,4 +1,6 @@
-import type { FileStatus, PrData } from '@pr-lens/shared';
+import type { FileStatus, PrData, PrResponse, SkipReason } from '@pr-lens/shared';
+import { jumpToLine } from '../lib/jump-to-line';
+import { RiskFlags } from './RiskFlags';
 
 const STATUS_LABEL: Record<FileStatus, string> = {
   added: 'A',
@@ -16,8 +18,17 @@ const STATE_STYLE: Record<PrData['state'], string> = {
   closed: 'bg-red-100 text-red-800',
 };
 
-export function PrDetails({ data }: { data: PrData }) {
+const SKIP_LABEL: Record<SkipReason, string> = {
+  lockfile: 'lockfile',
+  generated: 'generated',
+  vendored: 'vendored',
+  snapshot: 'snapshot',
+};
+
+export function PrDetails({ response }: { response: PrResponse }) {
+  const { pr: data, risk } = response;
   const missingPatches = data.files.filter((f) => f.patch === null).length;
+  const skipReasons = new Map(risk.files.map((f) => [f.path, f.skipReason]));
 
   return (
     <div className="space-y-4">
@@ -58,6 +69,8 @@ export function PrDetails({ data }: { data: PrData }) {
         </section>
       )}
 
+      <RiskFlags pr={data} flags={risk.flags} />
+
       <section>
         <h2 className="mb-1 text-xs font-semibold uppercase text-gray-500">Files</h2>
         {data.truncated.files && (
@@ -69,15 +82,24 @@ export function PrDetails({ data }: { data: PrData }) {
           </p>
         )}
         <ul className="space-y-0.5 font-mono text-xs">
-          {data.files.map((file) => (
-            <li key={file.path} className="flex gap-2">
-              <span className="w-3 shrink-0 text-gray-400">{STATUS_LABEL[file.status]}</span>
-              <span className="min-w-0 flex-1 break-all">{file.path}</span>
-              <span className="shrink-0 text-gray-500">
-                +{file.additions} −{file.deletions}
-              </span>
-            </li>
-          ))}
+          {data.files.map((file) => {
+            const skipReason = skipReasons.get(file.path) ?? null;
+            return (
+              <li key={file.path} className={`flex gap-2 ${skipReason !== null ? 'text-gray-400' : ''}`}>
+                <span className="w-3 shrink-0 text-gray-400">{STATUS_LABEL[file.status]}</span>
+                <button
+                  onClick={() => void jumpToLine(data, file.path, null)}
+                  className="min-w-0 flex-1 text-left break-all hover:underline"
+                >
+                  {file.path}
+                  {skipReason !== null && <span className="ml-1 font-sans">({SKIP_LABEL[skipReason]})</span>}
+                </button>
+                <span className="shrink-0 text-gray-500">
+                  +{file.additions} −{file.deletions}
+                </span>
+              </li>
+            );
+          })}
         </ul>
       </section>
 
