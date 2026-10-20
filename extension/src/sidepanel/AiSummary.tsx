@@ -47,7 +47,7 @@ export function AiSummary({ pr, state, previous, onRerun }: Props) {
     const note =
       state.status === 'loading'
         ? 'Re-running…'
-        : `Re-run failed: ${state.error.message}${state.error.resetAt !== null ? ` Next provider frees up at ${state.error.resetAt.toLocaleTimeString()}.` : ''} Showing the earlier analysis.`;
+        : `Re-run failed: ${state.error.message}${state.error.resetAt !== null ? ` Try again after ${state.error.resetAt.toLocaleTimeString()}.` : ''} Showing the earlier analysis.`;
     return (
       <>
         <p className="m-0 border-b border-line bg-medium-bg px-4 py-2 text-xs text-medium-fg">{note}</p>
@@ -64,7 +64,10 @@ export function AiSummary({ pr, state, previous, onRerun }: Props) {
       <Section title="Summary">
         <p className="m-0 text-xs text-muted">
           {text}
-          {resetAt !== null && ` Next provider frees up at ${resetAt.toLocaleTimeString()}.`}
+          {resetAt !== null &&
+            (code === 'quota_exceeded'
+              ? ` Your limit resets at ${resetAt.toLocaleTimeString()}.`
+              : ` Next provider frees up at ${resetAt.toLocaleTimeString()}.`)}
         </p>
         {code !== 'llm_not_configured' && (
           <button onClick={onRerun} className={`${buttonClass} self-start`}>

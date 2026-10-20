@@ -62,13 +62,15 @@ export type ApiErrorCode =
   | 'github_error'
   | 'llm_not_configured'
   | 'llm_unavailable'
+  | 'quota_exceeded'
   | 'internal';
 
 export type ApiErrorBody = {
   error: {
     code: ApiErrorCode;
     message: string;
-    // ISO timestamp, set for rate_limited and llm_unavailable (when the first provider frees up).
+    // ISO timestamp: when GitHub's limit resets (rate_limited), the first LLM provider frees up
+    // (llm_unavailable), or the user's own AI limit resets (quota_exceeded).
     resetAt?: string;
   };
 };

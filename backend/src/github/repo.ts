@@ -89,3 +89,17 @@ export async function fetchReviewThreads(token: string, ref: PrRef): Promise<Rev
     })),
   }));
 }
+
+// The token's GitHub login, for per-user limits. Remembered per Worker isolate, keyed by a hash
+// so the token itself is never kept.
+const logins = new Map<string, string>();
+
+export async function loginForToken(token: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(token));
+  const key = [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const known = logins.get(key);
+  if (known !== undefined) return known;
+  const { data } = await githubGet<{ login: string }>(token, '/user');
+  logins.set(key, data.login);
+  return data.login;
+}

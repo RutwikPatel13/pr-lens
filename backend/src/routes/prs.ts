@@ -6,11 +6,12 @@ import { kvCache } from '../cache/json-cache';
 import { askKey, replyKey } from '../cache/keys';
 import type { AppEnv } from '../env';
 import { fetchPrDetails, fetchPullMeta } from '../github/pull-request';
-import { fetchReviewThreads, fileAtCommit, searchCode } from '../github/repo';
+import { fetchReviewThreads, fileAtCommit, loginForToken, searchCode } from '../github/repo';
 import { providersFromEnv } from '../llm/config';
 import { FallbackLlm } from '../llm/fallback';
 import { analyzePr } from '../llm/pipeline';
 import { PrService } from '../pr-service';
+import { limitsFromEnv, useQuota } from '../quota';
 
 const OWNER = /^[A-Za-z0-9-]+$/;
 const REPO = /^[A-Za-z0-9._-]+$/;
@@ -20,12 +21,22 @@ export const prs = new Hono<{ Bindings: AppEnv }>();
 
 type Request = { token: string; ref: PrRef } | { error: Response };
 
+// Counts one LLM request against the token owner's limits; throws QuotaExceededError when over.
+// Called only right before the LLM runs, so cached results never count.
+async function chargeQuota(env: AppEnv, token: string): Promise<void> {
+  const store = env.CACHE === undefined ? null : kvCache(env.CACHE);
+  await useQuota(store, await loginForToken(token), limitsFromEnv(env), new Date());
+}
+
 function prService(env: AppEnv, token: string): PrService {
   return new PrService({
     fetchMeta: (ref) => fetchPullMeta(token, ref),
     fetchDetails: (ref, meta) => fetchPrDetails(token, ref, meta),
     // Built only on a cache miss, so cached analyses still load if no LLM key is configured.
-    analyze: (pr, risk) => analyzePr(new FallbackLlm(providersFromEnv(env)), pr, risk),
+    analyze: async (pr, risk) => {
+      await chargeQuota(env, token);
+      return analyzePr(new FallbackLlm(providersFromEnv(env)), pr, risk);
+    },
     cache: env.CACHE === undefined ? null : kvCache(env.CACHE),
     now: () => new Date(),
   });
@@ -93,7 +104,10 @@ prs.post('/:owner/:repo/:number/ask', async (c) => {
   const service = prService(c.env, req.token);
   const { pr, risk, isPublic } = await service.getPrContext(req.ref);
   // Built inside run(), so a cached answer still loads if no LLM key is configured.
-  const run = () => askPr(new FallbackLlm(providersFromEnv(c.env)), askDeps(req.token, req.ref, pr.headSha), pr, risk, body.data);
+  const run = async () => {
+    await chargeQuota(c.env, req.token);
+    return askPr(new FallbackLlm(providersFromEnv(c.env)), askDeps(req.token, req.ref, pr.headSha), pr, risk, body.data);
+  };
 
   // First questions (the suggested ones, or any common question) are cached per commit.
   // Follow-ups depend on the conversation, so they always run.
@@ -126,6 +140,9 @@ prs.post('/:owner/:repo/:number/threads/suggest-reply', async (c) => {
   }
   const last = thread.comments[thread.comments.length - 1];
   const key = replyKey(req.ref, pr.headSha, thread.id, thread.comments.length, last?.createdAt ?? '');
-  const run = () => suggestReply(new FallbackLlm(providersFromEnv(c.env)), askDeps(req.token, req.ref, pr.headSha), pr, thread);
+  const run = async () => {
+    await chargeQuota(c.env, req.token);
+    return suggestReply(new FallbackLlm(providersFromEnv(c.env)), askDeps(req.token, req.ref, pr.headSha), pr, thread);
+  };
   return c.json<SuggestedReply>(await service.cached(key, isPublic, run));
 });

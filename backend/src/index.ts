@@ -7,6 +7,7 @@ import { allowedOrigin } from './cors';
 import type { AppEnv } from './env';
 import { providersFromEnv } from './llm/config';
 import { AllProvidersFailedError, LlmNotConfiguredError } from './llm/fallback';
+import { QuotaExceededError } from './quota';
 import { prs } from './routes/prs';
 
 const app = new Hono<{ Bindings: AppEnv }>();
@@ -43,6 +44,9 @@ app.onError((err, c) => {
     const body: ApiErrorBody = { error: { code: err.code, message: err.message } };
     if (err.resetAt !== undefined) body.error.resetAt = err.resetAt.toISOString();
     return c.json(body, STATUS[err.code]);
+  }
+  if (err instanceof QuotaExceededError) {
+    return c.json<ApiErrorBody>({ error: { code: 'quota_exceeded', message: err.message, resetAt: err.resetAt.toISOString() } }, 429);
   }
   if (err instanceof LlmNotConfiguredError) {
     return c.json<ApiErrorBody>({ error: { code: 'llm_not_configured', message: err.message } }, 503);

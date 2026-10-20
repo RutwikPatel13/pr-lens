@@ -320,3 +320,17 @@ in the extension, over the patches the panel already has.
 
 Team rules from `.github/pr-lens.yml` are deferred: they need a file format, fetching and
 caching the file at the head commit, and handling a broken file.
+
+## 2026-10-20: Per-user limits on AI requests
+
+The backend is public and uses free LLM tiers, so the risk from abuse isn't cost but one
+person using up everyone's quota. Requests that actually run the LLM (uncached summary,
+uncached question, uncached reply) count against the GitHub login behind the token:
+30 an hour and 100 a day by default (`QUOTA_PER_HOUR`, `QUOTA_PER_DAY`). Cache hits are free.
+
+- **Storage:** one KV key per user per day holds both counts, so a request costs one KV
+  write. KV isn't atomic, so two simultaneous requests can both slip past the limit: a soft
+  limit, which is enough here.
+- **Identity:** the login comes from `GET /user` and is remembered per isolate under a hash
+  of the token; the token itself is never stored.
+- **Without KV** (local tests), there's no limit, rather than everyone being blocked.
