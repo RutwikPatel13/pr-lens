@@ -104,8 +104,9 @@ manifest change, the extension must be reloaded in chrome://extensions.
 - In zsh scripts, never name a variable `path`: it overwrites `$PATH`.
 - `VITE_*` env vars are bundled into the extension. Never put a secret in one. API keys
   live in `backend/.dev.vars` (git-ignored); the e2e GitHub token is in `.env.test` (git-ignored).
-- Changing prompts, chunking, models or `PrAnalysis` means bumping `ANALYSIS_VERSION`; risk
-  rules or stored GitHub fields mean `PR_DETAILS_VERSION` (`backend/src/cache/keys.ts`).
+- Cached results go stale unless you bump their version in `backend/src/cache/keys.ts`:
+  `ANALYSIS_VERSION` (summary prompts, chunking, models), `PR_DETAILS_VERSION` (risk rules,
+  stored GitHub fields), `ASK_VERSION` / `REPLY_VERSION` (Ask and reply prompts or shapes).
   Otherwise stale cached results are served.
 - Chrome won't open the side panel without a user gesture. A click on our in-page button
   counts, but only if the service worker calls `sidePanel.open()` with nothing awaited before it.
