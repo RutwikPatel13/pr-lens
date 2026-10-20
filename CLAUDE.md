@@ -10,7 +10,7 @@ This is a solo portfolio project. It should work end to end on public repos earl
 
 ### MVP
 
-1. Detect when the current tab is a PR page (`github.com/<owner>/<repo>/pull/<number>`) and enable the side panel there. Chrome only lets the panel open from a user gesture, so the toolbar icon opens it; it can't pop open on its own.
+1. Detect when the current tab is a PR page (`github.com/<owner>/<repo>/pull/<number>`) and show it in the side panel. Chrome only lets the panel open from a user gesture (toolbar icon or Alt+Shift+P). Once open it stays open across tabs and fills in whenever the active tab is a PR.
 2. Fetch the PR data through the GitHub API: title, description, commits, changed files, diff, and linked issues.
 3. Plain-English summary: what the PR changes, the likely reason (from the title, description, commits and linked issue), and which parts of the system it touches.
 4. Risk flags: highlight files and hunks that need a closer look. Each flag links to the exact file and line on the PR page.
@@ -30,11 +30,10 @@ This is a solo portfolio project. It should work end to end on public repos earl
 
 ```
 Chrome extension (Manifest V3)
-  service worker   -> watches tab URLs (tabs.onUpdated), enables the side
-                      panel only on PR tabs
-  side panel       -> React + TypeScript UI; reads owner/repo/number from the
-                      active tab's URL and calls the backend directly
-  content script   -> (milestone 3) scrolls to a line when a flag is clicked
+  service worker   -> opens the panel from the toolbar icon / shortcut
+  side panel       -> React + TypeScript UI; follows the active tab's URL
+                      (tabs.onUpdated, so GitHub's client-side navigation is
+                      seen) and calls the backend directly
 
 Backend API (Node + TypeScript + Hono, on Cloudflare Workers)
   GitHub client    -> fetches PR metadata, files, diff
@@ -45,7 +44,7 @@ Backend API (Node + TypeScript + Hono, on Cloudflare Workers)
 LLM providers      -> called only from the backend, never from the extension
 ```
 
-PR detection lives in the service worker, not a content script: GitHub navigates client-side, so a content script wouldn't re-run when moving between pages.
+PR detection uses `chrome.tabs` events, not a content script: GitHub navigates client-side, so a content script wouldn't re-run when moving between pages.
 
 The extension never holds an LLM API key. All model calls go through the backend, which also handles caching and rate limiting.
 

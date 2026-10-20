@@ -30,13 +30,13 @@ Tradeoffs:
 The head-SHA cache matters even more here: each PR is analyzed once, so
 free-tier limits are spent only on new PRs or new commits.
 
-## 2026-10-19: Side panel is enabled per tab, opened from the toolbar
+## 2026-10-19: Side panel is enabled per tab, opened from the toolbar (superseded below)
 
 `chrome.sidePanel.open()` only works from a user gesture, so the panel can't open
 by itself when a PR loads. The service worker enables the panel only on PR tabs,
 and clicking the toolbar icon opens it (`openPanelOnActionClick`).
 
-## 2026-10-19: PR detection in the service worker, not a content script
+## 2026-10-19: PR detection in the service worker, not a content script (superseded below)
 
 GitHub navigates client-side (no full page loads), so a content script injected
 on one page doesn't re-run when you move to a PR. `chrome.tabs.onUpdated` fires on
@@ -64,3 +64,17 @@ copied to the user's Google account) and sends it in an `X-GitHub-Token`
 header. The backend uses it for that request only and never stores or logs it.
 That keeps the backend stateless for now. The same token can later identify the
 user for per-user rate limits on LLM calls.
+
+## 2026-10-19: Side panel stays open across tabs; no auto-open
+
+Replaces the per-tab panel above. With a per-tab panel, leaving a PR closed it
+and every PR needed another click. Now the panel is window-wide: open it once
+(toolbar icon or Alt+Shift+P) and it stays open, filling in whenever the active
+tab is a PR and showing a placeholder elsewhere. The panel follows the active
+tab with `chrome.tabs` events, so the service worker only sets the click behavior.
+
+Chrome's side panel can't open without a user gesture. Extensions that appear by
+themselves (Simplify, for example) inject their own UI into the page with a
+content script. That would work here too, but it means living inside GitHub's
+layout and markup, which this project avoids. Revisit if the click turns out to
+matter in practice.
