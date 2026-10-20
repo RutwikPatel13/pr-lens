@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "PR Lens",
+  "version": "0.1.0",
+  "description": "Explains GitHub pull requests to the person reviewing them.",
+  "action": {
+    "default_title": "Open PR Lens"
+  },
+  "background": {
+    "service_worker": "src/background/index.ts",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "src/sidepanel/index.html"
+  },
+  "permissions": ["sidePanel"],
+  "host_permissions": ["https://github.com/*"]
+}

@@ -1,0 +1,10 @@
+{
+  "name": "pr-lens",
+  "private": true,
+  "workspaces": [
+    "extension"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  }
+}
