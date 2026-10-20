@@ -152,3 +152,10 @@ export type PrAnalysis = {
   generatedAt: string;
   cached: boolean;
 };
+
+// GET /api/health: lets the settings page check the backend URL and show what's configured.
+export type HealthResponse = {
+  ok: true;
+  llmProviders: string[];
+  cache: boolean;
+};

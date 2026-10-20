@@ -1,6 +1,5 @@
-import type { ApiErrorBody, ApiErrorCode, PrAnalysis, PrRef, PrResponse } from '@pr-lens/shared';
-
-export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:8787';
+import type { ApiErrorBody, ApiErrorCode, HealthResponse, PrAnalysis, PrRef, PrResponse } from '@pr-lens/shared';
+import { getBackendUrl } from './settings';
 
 export class ApiError extends Error {
   constructor(
@@ -13,13 +12,14 @@ export class ApiError extends Error {
   }
 }
 
-async function getJson<T>(path: string, token: string, signal: AbortSignal): Promise<T> {
+async function getJson<T>(path: string, token: string | null, signal: AbortSignal): Promise<T> {
+  const backendUrl = await getBackendUrl();
   let res: Response;
   try {
-    res = await fetch(`${BACKEND_URL}${path}`, { headers: { 'X-GitHub-Token': token }, signal });
+    res = await fetch(`${backendUrl}${path}`, { headers: token === null ? {} : { 'X-GitHub-Token': token }, signal });
   } catch (err) {
     if (signal.aborted) throw err;
-    throw new ApiError('network', `Can't reach the PR Lens backend at ${BACKEND_URL}.`);
+    throw new ApiError('network', `Can't reach the PR Lens backend at ${backendUrl}.`);
   }
 
   if (res.ok) return (await res.json()) as T;
@@ -42,4 +42,8 @@ export function fetchPr(pr: PrRef, token: string, signal: AbortSignal): Promise<
 // refresh skips the cache and runs the model again.
 export function fetchAnalysis(pr: PrRef, token: string, signal: AbortSignal, refresh = false): Promise<PrAnalysis> {
   return getJson<PrAnalysis>(`${prPath(pr)}/analysis${refresh ? '?refresh=1' : ''}`, token, signal);
+}
+
+export function fetchHealth(signal: AbortSignal): Promise<HealthResponse> {
+  return getJson<HealthResponse>('/api/health', null, signal);
 }

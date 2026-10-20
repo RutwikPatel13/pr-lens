@@ -1,4 +1,5 @@
 import type { FileRole, NotReadReason, PrAnalysis, PrRef } from '@pr-lens/shared';
+import { useEffect, useState } from 'react';
 import { jumpToLine } from '../lib/jump-to-line';
 import type { FetchState } from './usePrData';
 
@@ -51,9 +52,7 @@ export function AiSummary({ pr, state, previous, onRerun }: Props) {
       </div>
     );
   }
-  if (state.status === 'loading') {
-    return <p className="text-xs text-gray-500">Reading the diff with an LLM. Large PRs can take a minute…</p>;
-  }
+  if (state.status === 'loading') return <AnalysisLoading />;
   if (state.status === 'error') {
     const { code, message, resetAt } = state.error;
     const text =
@@ -74,10 +73,32 @@ export function AiSummary({ pr, state, previous, onRerun }: Props) {
   return <AnalysisView pr={pr} analysis={state.data} onRerun={onRerun} />;
 }
 
+// No progress events from the backend yet, so the honest signal is elapsed time.
+function AnalysisLoading() {
+  const [seconds, setSeconds] = useState(0);
+  useEffect(() => {
+    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    return () => clearInterval(timer);
+  }, []);
+  return (
+    <div className="space-y-1 text-xs text-gray-500">
+      <p className="animate-pulse">Reading the diff with an LLM… {seconds}s</p>
+      {seconds >= 15 && <p>Free tiers are slow on large PRs; this can take a minute or two. Rule flags below are already complete.</p>}
+    </div>
+  );
+}
+
 function AnalysisView({ pr, analysis, onRerun }: { pr: PrRef; analysis: PrAnalysis; onRerun: () => void }) {
   const { summary, reviewOrder, notRead, truncated, models, generatedAt, cached } = analysis;
+  const overBudget = notRead.filter((f) => f.reason === 'over_budget').length;
   return (
     <div className="space-y-4">
+      {overBudget > 0 && (
+        <p className="rounded border border-amber-200 bg-amber-50 p-2 text-xs text-amber-900">
+          Large PR: the AI read {reviewOrder.length} of {reviewOrder.length + notRead.length} changed files, starting with the
+          flagged ones. Rule flags cover every file.
+        </p>
+      )}
       <section className="space-y-1">
         <h2 className="text-xs font-semibold uppercase text-gray-500">Summary</h2>
         <p>{summary.what}</p>

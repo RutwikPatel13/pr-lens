@@ -1,9 +1,10 @@
-import type { ApiErrorBody } from '@pr-lens/shared';
+import type { ApiErrorBody, HealthResponse } from '@pr-lens/shared';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { GitHubError, type GitHubErrorCode } from './github/client';
 import type { AppEnv } from './env';
+import { providersFromEnv } from './llm/config';
 import { AllProvidersFailedError, LlmNotConfiguredError } from './llm/fallback';
 import { prs } from './routes/prs';
 
@@ -16,6 +17,14 @@ app.use(
     origin: (origin) => (origin.startsWith('chrome-extension://') ? origin : null),
     allowHeaders: ['X-GitHub-Token'],
     allowMethods: ['GET'],
+  }),
+);
+
+app.get('/api/health', (c) =>
+  c.json<HealthResponse>({
+    ok: true,
+    llmProviders: providersFromEnv(c.env).map((p) => `${p.name}/${p.model}`),
+    cache: c.env.CACHE !== undefined,
   }),
 );
 
