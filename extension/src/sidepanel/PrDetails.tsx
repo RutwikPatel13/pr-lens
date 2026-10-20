@@ -57,7 +57,7 @@ export function PrDetails({ token, response, analysis, previousAnalysis, onRerun
   const state = STATE[data.state];
 
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex flex-1 flex-col">
       <section className="flex flex-col gap-2 border-b border-line p-4">
         <a href={data.url} target="_blank" rel="noreferrer" className="text-base leading-snug font-semibold text-fg hover:underline">
           {data.title} <span className="font-normal text-muted">#{data.number}</span>

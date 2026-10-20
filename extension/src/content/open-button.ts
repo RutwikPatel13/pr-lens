@@ -13,6 +13,17 @@ const HOST_ID = 'pr-lens-open-button';
 const HEADER_SLOTS = ['[data-component="PH_Actions"]', '.gh-header-actions'];
 
 const counts = new Map<string, RiskCountsResponse>();
+
+// After the extension is reloaded or updated, the copy of this script already running in open
+// GitHub tabs is cut off: chrome.runtime.id goes away and every extension call throws
+// "Extension context invalidated". The fresh script only arrives with a page reload.
+const extensionAlive = () => chrome.runtime?.id !== undefined;
+
+function markStale(button: HTMLButtonElement): void {
+  const label = button.querySelector('span');
+  if (label !== null) label.textContent = 'Reload page to use PR Lens';
+  button.querySelector('[data-badge]')?.remove();
+}
 const prKey = (pr: PrRef) => `${pr.owner}/${pr.repo}#${pr.number}`.toLowerCase();
 
 // GitHub's own theme (data-color-mode is "light", "dark" or "auto"), so the button matches the page.
@@ -103,9 +114,13 @@ function createHost(pr: PrRef, mode: 'header' | 'floating'): HTMLElement {
   button.title = 'Open the review panel (Alt+Shift+P)';
   button.innerHTML = `${LENS_ICON}<span>PR Lens</span><span data-badge></span>`;
   button.addEventListener('click', () => {
+    if (!extensionAlive()) {
+      markStale(button);
+      return;
+    }
     // Sent from the click handler so Chrome treats the panel opening as user-initiated.
     const message: OpenPanelMessage = { type: 'pr-lens/open-panel' };
-    void chrome.runtime.sendMessage(message);
+    chrome.runtime.sendMessage(message).catch(() => markStale(button));
   });
   shadow.append(style, button);
   renderBadge(host);
@@ -116,7 +131,13 @@ async function loadCounts(pr: PrRef): Promise<void> {
   const key = prKey(pr);
   if (counts.has(key)) return;
   const request: RiskCountsRequest = { type: 'pr-lens/risk-counts', pr };
-  const response = (await chrome.runtime.sendMessage(request)) as RiskCountsResponse | undefined;
+  let response: RiskCountsResponse | undefined;
+  try {
+    response = (await chrome.runtime.sendMessage(request)) as RiskCountsResponse | undefined;
+  } catch {
+    // Extension reloaded mid-request (see extensionAlive): the badge just stays empty.
+    response = undefined;
+  }
   counts.set(key, response ?? { status: 'unavailable' });
   const host = document.getElementById(HOST_ID);
   if (host !== null && host.dataset.pr === key) renderBadge(host);
@@ -157,15 +178,24 @@ function sync(): void {
 
 export function startOpenButton(): void {
   let scheduled = false;
-  const schedule = () => {
+  const observer = new MutationObserver(() => schedule());
+  const stop = () => {
+    observer.disconnect();
+    window.removeEventListener('popstate', schedule);
+    window.removeEventListener('resize', schedule);
+  };
+  function schedule() {
     if (scheduled) return;
     scheduled = true;
     requestAnimationFrame(() => {
       scheduled = false;
+      // A stale copy (extension reloaded) stops watching the page; the button it placed stays
+      // and explains itself on click.
+      if (!extensionAlive()) return stop();
       sync();
     });
-  };
-  new MutationObserver(schedule).observe(document.documentElement, { childList: true, subtree: true });
+  }
+  observer.observe(document.documentElement, { childList: true, subtree: true });
   window.addEventListener('popstate', schedule);
   // The visible slot can change with the window width.
   window.addEventListener('resize', schedule);
