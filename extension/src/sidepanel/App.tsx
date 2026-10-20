@@ -6,7 +6,7 @@ import { Settings } from './Settings';
 import { TokenForm } from './TokenForm';
 import { useActivePr } from './useActivePr';
 import { useGitHubToken } from './useGitHubToken';
-import { usePrFetch } from './usePrData';
+import { usePrFetch } from './usePrFetch';
 
 export function App() {
   const pr = useActivePr();

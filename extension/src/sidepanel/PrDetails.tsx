@@ -2,7 +2,7 @@ import type { FileStatus, PrAnalysis, PrData, PrResponse, SkipReason } from '@pr
 import { jumpToLine } from '../lib/jump-to-line';
 import { AiSummary } from './AiSummary';
 import { RiskFlags } from './RiskFlags';
-import type { FetchState } from './usePrData';
+import type { FetchState } from './usePrFetch';
 
 const STATUS_LABEL: Record<FileStatus, string> = {
   added: 'A',

@@ -1,103 +1,42 @@
-# PR Lens (working name)
+# CLAUDE.md
 
-A Chrome extension that adds a side panel to GitHub pull request pages. When a reviewer opens a PR, the panel explains what changed, points to the risky parts, suggests an order to read the files in, and helps draft review comments.
+## Project
 
-The audience is the person reviewing the PR. Nothing gets posted to GitHub unless the reviewer clicks to post it. That is the main difference from tools like GitHub Copilot PR summaries and CodeRabbit, which add bot comments to the PR for everyone.
+PR Lens is a Chrome extension with a side panel for GitHub pull requests: a plain-English
+summary, a suggested review order, and risk flags that jump to the exact line. It's for the
+person reviewing the PR and never posts to GitHub. A Hono backend on Cloudflare Workers
+fetches the PR, runs a rule engine, and calls free LLM tiers (map/reduce over the diff),
+caching by head commit. Solo portfolio project: product plan and v2 in `docs/spec.md`,
+design reasoning in `docs/decisions.md`.
 
-This is a solo portfolio project. It should work end to end on public repos early, and every design decision should be easy to explain in an interview.
+## Stack
 
-## Features
+- TypeScript (strict) everywhere, Node 24 (`.nvmrc`), npm workspaces
+- Extension: Manifest V3, React 19, Vite 8 + CRXJS, Tailwind v4
+- Backend: Hono on Cloudflare Workers (wrangler), Zod, KV for the cache
+- LLM: Groq and Gemini free tiers (OpenRouter optional) behind `LlmProvider`; no SDKs, plain `fetch`
+- Package manager: npm. Never pnpm or yarn.
 
-### MVP
-
-1. Detect when the current tab is a PR page (`github.com/<owner>/<repo>/pull/<number>`) and show it in the side panel. Chrome only lets the panel open from a user gesture (toolbar icon or Alt+Shift+P). Once open it stays open across tabs and fills in whenever the active tab is a PR.
-2. Fetch the PR data through the GitHub API: title, description, commits, changed files, diff, and linked issues.
-3. Plain-English summary: what the PR changes, the likely reason (from the title, description, commits and linked issue), and which parts of the system it touches.
-4. Risk flags: highlight files and hunks that need a closer look. Each flag links to the exact file and line on the PR page.
-5. Review order: suggest which files to read first. Example: schema and migrations, then services, then UI, then tests.
-6. Cache results by head commit SHA so reopening the same PR is instant and costs nothing.
-7. Auth with a GitHub fine-grained personal access token pasted into the extension settings. Public repos only.
-
-### Version 2
-
-- GitHub OAuth so private repos work without pasting a token.
-- Draft review comments: select a hunk, ask "what could break here?", get an editable comment, and post it with one click.
-- Ask the PR: free-form questions like "where is this function called?" The backend pulls extra file context from the repo through the API to answer.
-- Custom rules per user or team, for example "always flag anything under billing/".
-- GitLab merge request support.
-
-## Architecture
+## Layout
 
 ```
-Chrome extension (Manifest V3)
-  service worker   -> opens the panel from the toolbar icon / shortcut
-  side panel       -> React + TypeScript UI; follows the active tab's URL
-                      (tabs.onUpdated, so GitHub's client-side navigation is
-                      seen) and calls the backend directly
-  content script   -> scrolls the Files tab to a flagged line and highlights it
-
-Backend API (Node + TypeScript + Hono, on Cloudflare Workers)
-  GitHub client    -> fetches PR metadata, files, diff
-  risk engine      -> cheap rule-based pass over file paths and diff content
-  LLM pipeline     -> chunked summarization (see below)
-  cache            -> keyed by repo + PR + head SHA
-
-LLM providers      -> called only from the backend, never from the extension
+extension/src/
+  background/     service worker: toolbar icon / Alt+Shift+P opens the panel
+  sidepanel/      panel UI, settings, hooks (useActivePr follows the active tab's URL)
+  options/        extension options page, renders sidepanel/Settings
+  content/        on github.com: scrolls the Files tab to a line and highlights it
+  lib/            api client, settings storage, GitHub anchor links, messages
+backend/src/
+  routes/prs.ts   GET /api/prs/:o/:r/:n (PR + rule flags), .../analysis (LLM)
+  pr-service.ts   GitHub fetch + cache + analysis orchestration
+  github/         REST + GraphQL client
+  risk/           rule engine: patch parsing, path words, rules
+  llm/            chunking, prompts, schemas, providers/, fallback chain, pipeline
+  cache/          KV JSON cache and versioned keys
+backend/tests/    mirrors src/
+shared/src/index.ts   every type that crosses the API
+docs/             spec, decisions, demo PRs, README images
 ```
-
-PR detection uses `chrome.tabs` events, not a content script: GitHub navigates client-side, so a content script wouldn't re-run when moving between pages.
-
-The extension never holds an LLM API key. All model calls go through the backend, which also handles caching and rate limiting.
-
-### LLM providers: free tiers with fallback
-
-The project runs on free LLM tiers. Every provider sits behind one `LlmProvider` interface in `backend/src/llm/providers/`, and the pipeline only talks to that interface.
-
-- Providers are tried in a configured order (`LLM_PROVIDERS`, entries `name` or `name:model`). Default: Groq gpt-oss-120b, Groq gpt-oss-20b (separate per-model quota), Gemini, OpenRouter. Claude is an optional paid provider, not built yet.
-- On a 429 that resets within 20s, wait and retry the same provider; otherwise cool it down until its reset and move on. 5xx: retry once. Timeout: no retry. Both then cool down 30s.
-- Output that fails schema validation gets one retry on the same provider with the validation error, then moves on.
-- Each stored analysis records which provider and model produced it.
-- Use one account per provider. Never rotate multiple accounts on one provider to stretch its quota.
-
-Use the GitHub API for PR data, not DOM scraping. GitHub changes its markup often and scraping would break. The content script only touches the DOM for small things like detecting the page and jumping to a line.
-
-## Handling large diffs
-
-This is the core engineering problem. A big PR won't fit in one prompt, and sending everything is slow and expensive.
-
-1. Rule pass first, no LLM. Tag files by path and content:
-   - migrations, schema files, SQL
-   - auth, session, permissions, tokens
-   - payments and billing
-   - `.env`, config, CI files, Dockerfiles
-   - dependency files (`package.json`, lockfiles, `requirements.txt`)
-   - deleted or weakened tests
-   - possible secrets (key-like strings)
-   - generated or vendored files, lockfile noise (deprioritize these)
-2. Map step: summarize each file or group of related files separately, with the rule tags included in the prompt.
-3. Reduce step: combine the per-file summaries into the overall summary, risk list, and review order.
-4. Skip or truncate generated files, lockfiles, and huge snapshots, and say so in the UI so the reviewer knows what wasn't read.
-5. Ask the model for structured JSON output (summary, risks with file and line, review order) and validate it before rendering.
-
-## Data model
-
-Cached in KV as JSON, public repos only, 30-day TTL (`backend/src/cache/keys.ts`):
-- `details:v<N>:<owner>/<repo>#<number>@<headSha>`: commits, files with patches, linked issues, rule flags
-- `analysis:v<N>:<owner>/<repo>#<number>@<headSha>`: `PrAnalysis` (summary, review order, LLM flags)
-
-Bump `PR_DETAILS_VERSION` when risk rules or stored GitHub fields change, `ANALYSIS_VERSION` when prompts, chunking, models or `PrAnalysis` change. PR metadata (title, description, state) is never cached.
-
-Later, for v2: `user_settings` (user_id, custom_rules json) in D1 or Supabase.
-
-## Tech stack
-
-- Node 24 (`.nvmrc`), npm workspaces. Use npm, never pnpm or yarn.
-- Extension: Manifest V3, React 19, TypeScript, Vite 8 + CRXJS, Tailwind v4
-- Backend: Node + TypeScript + Hono (shares types with the extension via `/shared`)
-- Cache: Cloudflare KV (`CACHE` binding), keyed by repo + PR + head SHA + version. No relational DB yet; add D1 or Supabase when something needs queries (e.g. v2 custom rules).
-- LLM: free tiers behind a provider interface with fallback (see above); Claude API as the paid upgrade
-- Hosting: Cloudflare Workers free tier (no cold-start sleep, runs Hono natively)
-- Everything in the MVP should run at $0.
 
 ## Commands
 
@@ -105,62 +44,88 @@ Run from the repo root.
 
 ```bash
 npm install
-npm run dev -w extension         # vite + CRXJS; load extension/dist unpacked
-npm run build -w extension       # typecheck + production build to extension/dist
+npm run dev -w backend           # wrangler dev, http://localhost:8787; keys in backend/.dev.vars
+npm run build -w extension       # typecheck + build to extension/dist (load unpacked in Chrome)
+npm run dev -w extension         # vite + CRXJS with HMR
+npm test -w backend              # vitest
+npm test -w backend -- tests/risk/engine.test.ts
+npm run typecheck -w backend     # wrangler types, then tsc
 npm run typecheck -w extension
-npm run dev -w backend           # wrangler dev on http://localhost:8787; LLM keys in backend/.dev.vars (see .dev.vars.example)
-npm run typecheck -w backend     # regenerates worker-configuration.d.ts, then tsc
-npm test -w backend              # vitest; one file: npm test -w backend -- tests/risk/engine.test.ts
 ```
 
-When a rule misses (or wrongly flags) something on a real PR, add that case to the "real PRs" block in `backend/tests/risk/engine.test.ts` before fixing the rule. Real PRs worth demoing go in `docs/demo-prs.md`.
+Run the backend tests and both typechecks before telling me a change is done. After a
+manifest change, the extension must be reloaded in chrome://extensions.
 
-API: `GET /api/prs/:owner/:repo/:number` (PR + rule flags, fast) and `.../analysis` (LLM, slow), both with header `X-GitHub-Token`. Errors are `{ error: { code, message } }` (types in `shared/src/index.ts`).
+---
 
-Load the extension: chrome://extensions → Developer mode → Load unpacked → `extension/dist`.
+## Conventions
 
-## Suggested repo layout
+- Strict TS plus `noUncheckedIndexedAccess`. No `any`; use `unknown` and narrow.
+- Named exports. Default export only where required (the Worker's `app` in `backend/src/index.ts`).
+- Types that cross the API live in `shared/src/index.ts`. Everything else sits next to its code.
+- GitHub and LLM JSON is typed with narrow types naming only the fields we read
+  (`GhPull`, `GeminiResponse`), cast once at the fetch. Model output goes through Zod.
+- Errors: throw typed errors (`GitHubError`, `LlmError`, `AllProvidersFailedError`) and map
+  them to API error codes in `app.onError`. No empty catch; a deliberate fallback gets a comment.
+- `async/await`. A single `.then` is fine where `await` can't go: React effects and the
+  `chrome.runtime.onMessage` callback.
+- React function components and hooks. Tailwind classes inline.
+- The panel talks to the backend only through `extension/src/lib/api.ts`, and to
+  `chrome.storage` only through `lib/settings.ts`.
+- Comments explain why, not what. Measured facts (free-tier limits, GitHub quirks) get a date.
 
-```
-/extension
-  /src
-    /content        content script
-    /sidepanel      React UI
-    /background     service worker
-    /lib            shared types, API client
-  manifest.json
-/backend
-  /src
-    /github         API client
-    /risk           rule engine
-    /llm            prompts, chunking, map/reduce
-    /routes
-  /tests
-/shared             types shared by extension and backend
-CLAUDE.md
-README.md
-```
+## Testing
 
-## Milestones
+- Vitest, backend only: risk engine, chunking, fallback chain, pipeline, cache service.
+  UI is checked in a scripted browser, not unit-tested.
+- LLM tests use `FakeProvider` (`backend/tests/llm/fakes.ts`); never call a real provider in tests.
+- When a rule misses (or wrongly flags) something on a real PR, add that case to the
+  "real PRs" block in `backend/tests/risk/engine.test.ts` first, then fix the rule.
+- Bug fixes get a test that fails before the fix. Don't change assertions to make a test pass.
 
-1. Repo setup, extension scaffold that opens a side panel on PR pages and shows the PR number.
-2. Backend fetches PR data from GitHub with a PAT and returns it to the panel.
-3. Rule-based risk flags shown in the panel, with clickable links to lines.
-4. LLM summary and review order with map/reduce for large PRs.
-5. Caching by head SHA.
-6. Polish: loading states, errors (bad token, rate limits, huge PRs), settings page, README with screenshots and a demo GIF.
-7. Version 2 features, one at a time.
+## Things that will bite you
 
-## How to demo it
+- This machine's default `node` is 20.11, too old for Vite 8. Use Node 24:
+  `/opt/homebrew/opt/node@24/bin` first on PATH.
+- `npm run <x> -w <workspace>` only works from the repo root.
+- `VITE_*` env vars are bundled into the extension. Never put a secret in one. API keys
+  live in `backend/.dev.vars` (git-ignored); the e2e GitHub token is in `.env.test` (git-ignored).
+- Changing prompts, chunking, models or `PrAnalysis` means bumping `ANALYSIS_VERSION`; risk
+  rules or stored GitHub fields mean `PR_DETAILS_VERSION` (`backend/src/cache/keys.ts`).
+  Otherwise stale cached results are served.
+- Chrome won't open the side panel without a user gesture. Don't try to auto-open it.
+- GitHub navigates client-side: content scripts don't re-run between pages. PR detection
+  uses `chrome.tabs` events.
+- GitHub line anchors are `#diff-<sha256(path)>R<n>` (`L<n>` for the old side). GitHub
+  doesn't scroll to them itself and renders diffs lazily, hence the content script's retries.
+- Free LLM tiers (measured 2026-10-19): Groq allows 8k tokens a minute per model, Gemini's
+  free tier is often overloaded (503s, ~60s calls). Re-check model IDs with each provider's
+  model list before changing defaults; models get retired.
+- `backend/worker-configuration.d.ts` is generated and git-ignored; `typecheck` regenerates it.
+- Tailwind's `uppercase` changes `innerText`: scripted UI checks see "RISK FLAGS".
 
-Open any public PR on a well-known repo, open the panel, and walk through the summary, a risk flag, and the review order. Keep a short list of real PRs where it caught something useful, like a migration with no rollback or a removed test.
+---
 
-## Working agreements for Claude Code
+## How I want you to work
 
-- TypeScript strict mode everywhere on the TS side. No `any` unless there's a comment explaining why.
-- Ask before adding a new dependency, and say why it's needed.
-- Keep secrets out of the extension bundle. API keys live only in backend env vars.
-- Write tests for the risk engine and the chunking logic. UI tests can come later.
-- Small commits with clear messages. One milestone at a time.
-- When a design choice has a real tradeoff (caching strategy, chunk size, model choice), write a short note in `docs/decisions.md` with what was picked and why. These notes double as interview talking points.
+- Ask before installing a new dependency, and say why it's needed. Check if we already
+  have something that does the job.
+- Make the smallest change that solves the problem. Don't refactor adjacent code you
+  weren't asked about.
+- If you're guessing about an API, read the source in `node_modules` or the provider's
+  docs. Don't invent method names, model IDs or endpoints.
+- If a task needs more than about three files changed, outline the plan first and wait.
+- Don't add defensive try/catch around things that can't fail.
+- One milestone (or feature) at a time, on its own branch, in small commits with clear messages.
+- When a choice has a real tradeoff (caching, chunk size, model choice), add a short note to
+  `docs/decisions.md`: what was picked and why. These double as interview talking points.
+- Keep the README and `docs/demo-prs.md` current when behavior changes.
 - If something in this file is unclear or seems wrong, ask instead of guessing.
+
+## Don't
+
+- Don't push or open PRs unless I ask.
+- Don't modify `.env*`, `.dev.vars`, CI config, or anything in `.github/` without asking.
+- Don't disable a type check or add `@ts-expect-error` to make an error go away. Fix the
+  cause or tell me it's not fixable.
+- Don't put secrets in the extension bundle, in commits, or in chat output.

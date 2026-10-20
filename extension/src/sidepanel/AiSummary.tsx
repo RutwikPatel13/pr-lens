@@ -1,7 +1,7 @@
 import type { FileRole, NotReadReason, PrAnalysis, PrRef } from '@pr-lens/shared';
 import { useEffect, useState } from 'react';
 import { jumpToLine } from '../lib/jump-to-line';
-import type { FetchState } from './usePrData';
+import type { FetchState } from './usePrFetch';
 
 const ROLE_LABEL: Record<FileRole, string> = {
   schema: 'schema',
