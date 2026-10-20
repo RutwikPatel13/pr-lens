@@ -104,7 +104,11 @@ npm install
 npm run dev -w extension         # vite + CRXJS; load extension/dist unpacked
 npm run build -w extension       # typecheck + production build to extension/dist
 npm run typecheck -w extension
+npm run dev -w backend           # wrangler dev on http://localhost:8787 (the panel's default backend)
+npm run typecheck -w backend     # regenerates worker-configuration.d.ts, then tsc
 ```
+
+API: `GET /api/prs/:owner/:repo/:number` with header `X-GitHub-Token`. Errors are `{ error: { code, message } }` (types in `shared/src/index.ts`).
 
 Load the extension: chrome://extensions → Developer mode → Load unpacked → `extension/dist`.
 

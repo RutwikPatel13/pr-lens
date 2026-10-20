@@ -2,7 +2,9 @@
   "name": "pr-lens",
   "private": true,
   "workspaces": [
-    "extension"
+    "extension",
+    "backend",
+    "shared"
   ],
   "engines": {
     "node": ">=22.12"

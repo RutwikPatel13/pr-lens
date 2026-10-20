@@ -13,6 +13,6 @@
   "side_panel": {
     "default_path": "src/sidepanel/index.html"
   },
-  "permissions": ["sidePanel"],
+  "permissions": ["sidePanel", "storage"],
   "host_permissions": ["https://github.com/*"]
 }

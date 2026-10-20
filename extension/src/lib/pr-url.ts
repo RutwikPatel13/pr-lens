@@ -1,8 +1,4 @@
-export type PrRef = {
-  owner: string;
-  repo: string;
-  number: number;
-};
+import type { PrRef } from '@pr-lens/shared';
 
 // Matches /owner/repo/pull/123 plus any sub-page (/files, /commits, ...).
 const PR_PATH = /^\/(?<owner>[A-Za-z0-9-]+)\/(?<repo>[A-Za-z0-9._-]+)\/pull\/(?<number>\d+)(?:\/|$)/;

@@ -1,5 +1,6 @@
+import type { PrRef } from '@pr-lens/shared';
 import { useEffect, useState } from 'react';
-import { parsePrUrl, type PrRef } from '../lib/pr-url';
+import { parsePrUrl } from '../lib/pr-url';
 
 // The PR open in this window's active tab, kept current as the reviewer navigates.
 export function useActivePr(): PrRef | null {

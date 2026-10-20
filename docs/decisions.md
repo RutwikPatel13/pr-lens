@@ -42,3 +42,25 @@ GitHub navigates client-side (no full page loads), so a content script injected
 on one page doesn't re-run when you move to a PR. `chrome.tabs.onUpdated` fires on
 every URL change, including history API navigation, so the service worker sees
 them all. The content script is kept for DOM work like scrolling to a line.
+
+## 2026-10-19: Plain fetch for GitHub, no Octokit
+
+The backend needs four calls (PR, commits, files, one GraphQL query for linked
+issues). A ~100-line client with `fetch` covers that, runs on Workers with no
+extra bundle, and keeps error mapping (bad token, rate limit, not found) in one
+place we control. Octokit is worth revisiting if v2 needs many more endpoints.
+
+## 2026-10-19: Per-file patches instead of the full PR diff
+
+The files endpoint already returns each file's patch, and the map step
+summarizes per file anyway, so a separate full-diff download would be redundant.
+GitHub leaves `patch` out for binary and very large files. Those come through as
+`patch: null`, and the panel says how many files had no diff.
+
+## 2026-10-19: The reviewer's PAT is passed through, not stored server-side
+
+The panel keeps the token in `chrome.storage.local` (not `sync`, so it isn't
+copied to the user's Google account) and sends it in an `X-GitHub-Token`
+header. The backend uses it for that request only and never stores or logs it.
+That keeps the backend stateless for now. The same token can later identify the
+user for per-user rate limits on LLM calls.

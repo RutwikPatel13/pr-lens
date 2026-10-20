@@ -1,0 +1,19 @@
+{
+  "name": "@pr-lens/backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "wrangler types && tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "wrangler": "^4.151.2"
+  },
+  "dependencies": {
+    "@pr-lens/shared": "^0.1.0",
+    "hono": "^4.13.13"
+  }
+}
