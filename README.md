@@ -102,7 +102,6 @@ Each tradeoff (backend choice, free providers, caching, why the content script e
 ## Roadmap
 
 - GitHub OAuth, so private repos work without pasting a token
-- Draft review comments: select a hunk, ask "what could break here?", post the edited comment
 - Ask the PR: free-form questions answered with extra context fetched from the repo
 - Custom rules per user or team
 - GitLab merge requests

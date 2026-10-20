@@ -7,7 +7,7 @@ the reasoning behind each choice are in the README and `docs/decisions.md`.
 
 A Chrome extension that adds a side panel to GitHub pull request pages. When a reviewer
 opens a PR, the panel explains what changed, points to the risky parts, suggests an order
-to read the files in, and (v2) helps draft review comments.
+to read the files in.
 
 The audience is the person reviewing the PR. Nothing gets posted to GitHub unless the
 reviewer clicks to post it. That's the main difference from GitHub Copilot PR summaries
@@ -37,7 +37,6 @@ caching, (6) polish: loading and error states, settings, README and demo.
 
 - GitHub OAuth so private repos work without a pasted token. Needs per-user access checks
   before private PRs can be cached, and a look at whether free LLM tiers may use the data.
-- Draft review comments: select a hunk, ask "what could break here?", edit, post with one click.
 - Ask the PR: free-form questions; the backend pulls extra file context from the repo.
 - Custom rules per user or team, e.g. "always flag anything under billing/".
 - GitLab merge request support.
@@ -45,6 +44,11 @@ caching, (6) polish: loading and error states, settings, README and demo.
 The backend is deployed on Cloudflare Workers (free plan). Publishing the extension to the
 Chrome Web Store is optional and not done: it needs a developer account and a listing, and
 its store ID would need adding to `ALLOWED_EXTENSION_IDS`.
+
+Dropped (2026-10-20): drafting review comments in the panel. GitHub's own comment box is
+right beside the code, so a second place to write comments added little, and PR Lens's job
+is pointing the reviewer at what to read. The AI flags already answer "what could break
+here?" for the risky lines.
 
 ## How to demo
 
