@@ -6,5 +6,10 @@
   "observability": { "enabled": true },
   // PR details and LLM analyses, keyed by head commit. No id: wrangler dev uses local
   // storage, and wrangler deploy creates the namespace on first deploy.
-  "kv_namespaces": [{ "binding": "CACHE" }]
+  "kv_namespaces": [{ "binding": "CACHE" }],
+  "vars": {
+    // PR Lens's extension ID, fixed by the "key" in extension/manifest.json.
+    // Add the Chrome Web Store ID here too once it's published there.
+    "ALLOWED_EXTENSION_IDS": "mkfgkglfpnckfceehfdlmbgebfhbifcg"
+  }
 }

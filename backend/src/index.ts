@@ -3,6 +3,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { GitHubError, type GitHubErrorCode } from './github/client';
+import { allowedOrigin } from './cors';
 import type { AppEnv } from './env';
 import { providersFromEnv } from './llm/config';
 import { AllProvidersFailedError, LlmNotConfiguredError } from './llm/fallback';
@@ -13,8 +14,7 @@ const app = new Hono<{ Bindings: AppEnv }>();
 app.use(
   '/api/*',
   cors({
-    // Any extension origin for now. Pin to the published extension ID once it has one.
-    origin: (origin) => (origin.startsWith('chrome-extension://') ? origin : null),
+    origin: (origin, c) => allowedOrigin(origin, c.env.ALLOWED_EXTENSION_IDS),
     allowHeaders: ['X-GitHub-Token'],
     allowMethods: ['GET'],
   }),
