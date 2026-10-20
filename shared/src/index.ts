@@ -70,3 +70,45 @@ export type ApiErrorBody = {
     resetAt?: string;
   };
 };
+
+export type RiskCategory = 'schema' | 'auth' | 'payments' | 'config' | 'dependencies' | 'tests' | 'secrets';
+
+export type Severity = 'high' | 'medium' | 'low';
+
+// RIGHT is the new version of the file (added/context lines), LEFT the old one (removed lines).
+// Same naming as GitHub's review comment API.
+export type LineRange = {
+  side: 'LEFT' | 'RIGHT';
+  start: number;
+  end: number;
+};
+
+export type RiskFlag = {
+  id: string;
+  ruleId: string;
+  category: RiskCategory;
+  severity: Severity;
+  filePath: string;
+  // null when the file has no patch to point into (binary or too large).
+  lines: LineRange | null;
+  explanation: string;
+};
+
+// Why a file is deprioritized: noise a reviewer (and later the LLM) shouldn't spend time on.
+export type SkipReason = 'lockfile' | 'generated' | 'vendored' | 'snapshot';
+
+export type FileRisk = {
+  path: string;
+  categories: RiskCategory[];
+  skipReason: SkipReason | null;
+};
+
+export type RiskReport = {
+  flags: RiskFlag[];
+  files: FileRisk[];
+};
+
+export type PrResponse = {
+  pr: PrData;
+  risk: RiskReport;
+};

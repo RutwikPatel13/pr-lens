@@ -1,6 +1,7 @@
-import type { ApiErrorBody } from '@pr-lens/shared';
+import type { ApiErrorBody, PrResponse } from '@pr-lens/shared';
 import { Hono } from 'hono';
 import { fetchPrData } from '../github/pull-request';
+import { analyzeRisk } from '../risk/engine';
 
 const OWNER = /^[A-Za-z0-9-]+$/;
 const REPO = /^[A-Za-z0-9._-]+$/;
@@ -20,5 +21,6 @@ prs.get('/:owner/:repo/:number', async (c) => {
     return c.json<ApiErrorBody>({ error: { code: 'invalid_request', message: 'Not a valid pull request path.' } }, 400);
   }
 
-  return c.json(await fetchPrData(token, { owner, repo, number: Number(number) }));
+  const pr = await fetchPrData(token, { owner, repo, number: Number(number) });
+  return c.json<PrResponse>({ pr, risk: analyzeRisk(pr.files) });
 });
