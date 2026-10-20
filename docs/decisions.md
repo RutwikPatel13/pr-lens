@@ -301,3 +301,22 @@ Superseding "no caching" for Ask above:
 
 As everywhere else, the cache is only used for public repos, and failures are never cached.
 Measured locally: a suggested question went from 6.5s to 0.5s, and a reply from 1.5s to 0.7s.
+
+## 2026-10-20: Custom rules run in the extension
+
+The reviewer's own rules (path globs, or text or a regular expression in added or removed
+lines) and switched-off built-in categories live in `chrome.storage.sync`, and are applied
+in the extension, over the patches the panel already has.
+
+- **Why not the backend:** nothing about the reviewer's rules leaves their browser, cached
+  results stay shared (the rules aren't part of any cache key), and the editor's preview on
+  the open PR is instant.
+- **One implementation:** the evaluation (`shared/src/custom-rules.ts`) and the diff parser
+  moved to `/shared`, so the panel, the service worker (the in-page button's count) and the
+  backend's tests all run the same code. They're tested in the backend's Vitest suite.
+- **Switching off a category** hides the AI's flags in it too, since they're noise for the
+  same reason. The button's count drops them as well.
+- **Trade-off:** the AI summary doesn't know about custom rules; it only sees built-in flags.
+
+Team rules from `.github/pr-lens.yml` are deferred: they need a file format, fetching and
+caching the file at the head commit, and handling a broken file.

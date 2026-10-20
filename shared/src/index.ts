@@ -1,5 +1,5 @@
-// Types shared by the extension and the backend. Types only, no runtime code,
-// so both bundlers can import the TypeScript source directly.
+// Types shared by the extension and the backend. Runtime code lives in its own modules
+// (patch.ts, custom-rules.ts), all plain TypeScript both bundlers import directly.
 
 export type PrRef = {
   owner: string;
@@ -73,8 +73,18 @@ export type ApiErrorBody = {
   };
 };
 
-// 'logic' is only used by LLM flags: general correctness concerns that fit no rule category.
-export type RiskCategory = 'schema' | 'auth' | 'payments' | 'config' | 'dependencies' | 'tests' | 'secrets' | 'logic';
+export type RiskCategory =
+  | 'schema'
+  | 'auth'
+  | 'payments'
+  | 'config'
+  | 'dependencies'
+  | 'tests'
+  | 'secrets'
+  // Only LLM flags: general correctness concerns that fit no rule category.
+  | 'logic'
+  // Only the reviewer's own rules; the flag's label carries the rule's name.
+  | 'custom';
 
 export type Severity = 'high' | 'medium' | 'low';
 
@@ -88,8 +98,11 @@ export type LineRange = {
 
 export type RiskFlag = {
   id: string;
-  // 'rule' flags come from the rule engine, 'llm' flags from the model (ruleId is then 'llm').
-  source: 'rule' | 'llm';
+  // 'rule': built-in rule engine. 'llm': the model (ruleId 'llm'). 'custom': the reviewer's own
+  // rules, evaluated in the extension (ruleId 'custom:<rule id>').
+  source: 'rule' | 'llm' | 'custom';
+  // Display name for custom flags (the rule's name).
+  label?: string;
   ruleId: string;
   category: RiskCategory;
   severity: Severity;
@@ -208,4 +221,19 @@ export type SuggestedReply = {
   models: string[];
   // Cached until the thread gets a new comment or the PR a new commit.
   cached: boolean;
+};
+
+// A reviewer's own rule, stored in chrome.storage.sync and run by the extension.
+export type CustomRuleKind = 'path' | 'added' | 'removed';
+
+export type CustomRule = {
+  id: string;
+  name: string;
+  kind: CustomRuleKind;
+  // A glob for 'path' rules; text (or a regular expression when regex is set) for line rules.
+  pattern: string;
+  regex: boolean;
+  severity: Severity;
+  explanation: string;
+  enabled: boolean;
 };

@@ -13,9 +13,9 @@ export type MergedFlags = {
   counts: Record<Severity, number>;
 };
 
-// Rule flags arrive first; LLM flags join once the analysis finishes. An LLM flag on the same
-// line as a rule flag becomes a note under it (the model is usually adding context), so the
-// list doesn't show the same line twice.
+// Rule flags (built-in and the reviewer's own) arrive first; LLM flags join once the analysis
+// finishes. An LLM flag on the same line as a rule flag becomes a note under it (the model is
+// usually adding context), so the list doesn't show the same line twice.
 export function mergeFlags(ruleFlags: RiskFlag[], llmFlags: RiskFlag[]): MergedFlags {
   const ruleLocations = new Set(ruleFlags.map(location));
   const notesByLocation = new Map<string, string[]>();
@@ -36,7 +36,7 @@ export function mergeFlags(ruleFlags: RiskFlag[], llmFlags: RiskFlag[]): MergedF
   for (const flag of flags) {
     const key = location(flag);
     const forLine = notesByLocation.get(key);
-    if (flag.source !== 'rule' || forLine === undefined || placed.has(key)) continue;
+    if (flag.source === 'llm' || forLine === undefined || placed.has(key)) continue;
     notes.set(flag.id, forLine);
     placed.add(key);
   }

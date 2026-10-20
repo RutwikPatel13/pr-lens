@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { ApiError, fetchHealth } from '../lib/api';
 import { DEFAULT_BACKEND_URL, getBackendUrl, setBackendUrl } from '../lib/settings';
 import { setThemePreference, type ThemePreference } from '../lib/theme';
+import { RulesSettings } from './RulesSettings';
 import { TokenForm } from './TokenForm';
 import { buttonClass, Section } from './ui';
 import { useGitHubToken } from './useGitHubToken';
@@ -22,6 +23,7 @@ export function Settings() {
   const [replacing, setReplacing] = useState(false);
   const [url, setUrl] = useState('');
   const [check, setCheck] = useState<Check>({ status: 'idle' });
+  const [section, setSection] = useState<'general' | 'rules'>('general');
 
   useEffect(() => {
     void getBackendUrl().then(setUrl);
@@ -40,28 +42,53 @@ export function Settings() {
 
   return (
     <div className="flex flex-col">
-      <Section title="GitHub token">
-        {token === undefined ? null : token === null || replacing ? (
-          <TokenForm
-            onSave={async (value) => {
-              await save(value);
-              setReplacing(false);
-            }}
-          />
-        ) : (
-          <>
-            <p className="m-0">
-              Saved token ending in <span className="font-mono">…{token.slice(-4)}</span>. Stored only in this browser.
-            </p>
-            <div className="flex gap-2">
-              <button className={buttonClass} onClick={() => setReplacing(true)}>
-                Replace
-              </button>
-              <button className={buttonClass} onClick={() => void clear()}>
-                Remove
-              </button>
-            </div>
-          </>
+      <div role="tablist" aria-label="Settings sections" className="flex gap-1 border-b border-line px-4">
+        {(
+          [
+            ['general', 'General'],
+            ['rules', 'Rules'],
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={section === id}
+            onClick={() => setSection(id)}
+            className={`-mb-px cursor-pointer border-b-2 px-2.5 py-2 text-[13px] ${
+              section === id ? 'border-tab-active font-semibold text-fg' : 'border-transparent text-muted hover:text-fg'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {section === 'rules' ? (
+        <RulesSettings />
+      ) : (
+        <>
+          <Section title="GitHub token">
+            {token === undefined ? null : token === null || replacing ? (
+              <TokenForm
+                onSave={async (value) => {
+                  await save(value);
+                  setReplacing(false);
+                }}
+              />
+            ) : (
+              <>
+                <p className="m-0">
+                  Saved token ending in <span className="font-mono">…{token.slice(-4)}</span>. Stored only in this browser.
+                </p>
+                <div className="flex gap-2">
+                  <button className={buttonClass} onClick={() => setReplacing(true)}>
+                    Replace
+                  </button>
+                  <button className={buttonClass} onClick={() => void clear()}>
+                    Remove
+                  </button>
+                </div>
+        </>
         )}
       </Section>
 
@@ -107,6 +134,8 @@ export function Settings() {
         )}
         {check.status === 'error' && <p className="m-0 text-xs text-danger">{check.message}</p>}
       </Section>
+        </>
+      )}
     </div>
   );
 }

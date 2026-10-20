@@ -1,6 +1,7 @@
 import type { FileStatus, PrAnalysis, PrData, PrResponse, SkipReason } from '@pr-lens/shared';
 import { useState } from 'react';
 import { fetchThreads } from '../lib/api';
+import { flagsWithRules } from '../lib/apply-rules';
 import { jumpToLine } from '../lib/jump-to-line';
 import { shortPath } from '../lib/paths';
 import { AiSummary, AnalysisFooter } from './AiSummary';
@@ -10,6 +11,7 @@ import { mergeFlags } from './flags';
 import { RiskFlags } from './RiskFlags';
 import { Section, SeverityCount } from './ui';
 import { usePrFetch, type FetchState } from './usePrFetch';
+import { useRuleSettings } from './useRuleSettings';
 
 const STATUS: Record<FileStatus, { letter: string; className: string }> = {
   added: { letter: 'A', className: 'text-success' },
@@ -51,7 +53,11 @@ export function PrDetails({ token, response, analysis, previousAnalysis, onRerun
   const threads = usePrFetch(fetchThreads, data, token);
   const openThreads = threads.status === 'loaded' ? threads.data.filter((t) => !t.resolved).length : 0;
   const shownAnalysis = analysis.status === 'loaded' ? analysis.data : previousAnalysis;
-  const merged = mergeFlags(risk.flags, shownAnalysis?.flags ?? []);
+  const ruleSettings = useRuleSettings();
+  // A switched-off category hides the AI's flags in it too: it's noise either way.
+  const disabled = new Set(ruleSettings.disabledCategories);
+  const llmFlags = (shownAnalysis?.flags ?? []).filter((f) => !disabled.has(f.category));
+  const merged = mergeFlags(flagsWithRules(response, ruleSettings), llmFlags);
   const missingPatches = data.files.filter((f) => f.patch === null).length;
   const skipReasons = new Map(risk.files.map((f) => [f.path, f.skipReason]));
   const state = STATE[data.state];

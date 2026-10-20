@@ -1,7 +1,9 @@
 import type { PrRef } from '@pr-lens/shared';
 import { fetchPr } from '../lib/api';
+import { flagsWithRules } from '../lib/apply-rules';
 import { isOpenPanelMessage, isRiskCountsRequest, type RiskCountsResponse } from '../lib/messages';
 import { parsePrUrl } from '../lib/pr-url';
+import { getRuleSettings } from '../lib/rules-storage';
 import { getGitHubToken } from '../lib/settings';
 
 const PANEL_PATH = 'src/sidepanel/index.html';
@@ -37,8 +39,10 @@ async function riskCounts(pr: PrRef): Promise<RiskCountsResponse> {
   const token = await getGitHubToken();
   if (token === null) return { status: 'unavailable' };
   try {
-    const { risk } = await fetchPr(pr, token, AbortSignal.timeout(15_000));
-    const count = (severity: 'high' | 'medium') => risk.flags.filter((f) => f.severity === severity).length;
+    const [response, settings] = await Promise.all([fetchPr(pr, token, AbortSignal.timeout(15_000)), getRuleSettings()]);
+    // Same flags the panel shows: built-in minus switched-off categories, plus the reviewer's rules.
+    const flags = flagsWithRules(response, settings);
+    const count = (severity: 'high' | 'medium') => flags.filter((f) => f.severity === severity).length;
     return { status: 'ok', high: count('high'), medium: count('medium') };
   } catch (err) {
     // The badge is optional: the button still opens the panel, which shows the real error.

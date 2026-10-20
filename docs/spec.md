@@ -35,12 +35,13 @@ caching, (6) polish: loading and error states, settings, README and demo.
 
 ## Version 2 (one at a time)
 
-Done: Ask the PR (questions answered from the diff, files and code search) and a Discussion
-tab with suggested replies to review threads (copy only, nothing posted).
+Done: Ask the PR (questions answered from the diff, files and code search), a Discussion
+tab with suggested replies to review threads (copy only, nothing posted), and your own
+rules plus switching off built-in categories.
 
 - GitHub OAuth so private repos work without a pasted token. Needs per-user access checks
   before private PRs can be cached, and a look at whether free LLM tiers may use the data.
-- Custom rules per user or team, e.g. "always flag anything under billing/".
+- Team rules from `.github/pr-lens.yml` in the repo, shared by everyone reviewing it.
 - GitLab merge request support.
 
 The backend is deployed on Cloudflare Workers (free plan). Publishing the extension to the

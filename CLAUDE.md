@@ -38,7 +38,7 @@ backend/src/
   llm/            chunking, prompts, schemas, providers/, fallback chain, pipeline
   cache/          KV JSON cache and versioned keys
 backend/tests/    mirrors src/
-shared/src/index.ts   every type that crosses the API
+shared/src/       API types (index.ts); diff parsing and custom rules, run by both sides
 docs/             spec, decisions, demo PRs, README images
 ```
 
@@ -101,7 +101,6 @@ manifest change, the extension must be reloaded in chrome://extensions.
   localhost:8787. Testing a local backend with a production build means changing it in Settings.
 - The manifest `key` fixes the extension ID, and the backend's CORS allows only the IDs in
   `ALLOWED_EXTENSION_IDS`. Remove the key and the panel gets blocked.
-- In zsh scripts, never name a variable `path`: it overwrites `$PATH`.
 - `VITE_*` env vars are bundled into the extension. Never put a secret in one. API keys
   live in `backend/.dev.vars` (git-ignored); the e2e GitHub token is in `.env.test` (git-ignored).
 - Cached results go stale unless you bump their version in `backend/src/cache/keys.ts`:

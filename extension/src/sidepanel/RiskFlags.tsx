@@ -13,6 +13,7 @@ const CATEGORY_LABEL: Record<RiskCategory, string> = {
   tests: 'Tests',
   secrets: 'Secrets',
   logic: 'Logic',
+  custom: 'Custom',
 };
 
 function lineLabel(flag: RiskFlag): string {
@@ -70,8 +71,11 @@ function FlagRow({ pr, flag, notes, last }: { pr: PrRef; flag: RiskFlag; notes: 
       <span className="flex min-w-0 flex-col gap-1">
         <span className="flex items-center gap-1.5">
           <SeverityBadge severity={flag.severity} />
-          <span className="text-xs text-muted">{CATEGORY_LABEL[flag.category]}</span>
+          <span className="text-xs text-muted">{flag.label ?? CATEGORY_LABEL[flag.category]}</span>
           {flag.source === 'llm' && <AiTag />}
+          {flag.source === 'custom' && (
+            <span className="h-4 rounded border border-accent px-1 text-[10px] leading-4 font-semibold text-accent">Your rule</span>
+          )}
         </span>
         <span>{flag.explanation}</span>
         {notes.map((note) => (

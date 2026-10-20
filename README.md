@@ -7,6 +7,7 @@ A Chrome extension that helps you review a GitHub pull request. Open a PR, open 
 - **Risk flags** that link to the exact line: migrations, destructive drops, migrations with no rollback, auth and payment code, CI config, new dependencies, possible secrets, deleted or skipped tests.
 - **Ask the PR**: questions like "does anything still read `password_hash`?", answered from the diff, files at the PR's commit and code search, with sources you can click.
 - **Discussion**: the PR's review threads, with a suggested reply for any of them that you can edit and copy into GitHub.
+- **Your own rules**: flag paths (`**/billing/**`) or added and removed lines (`TODO`, or a regular expression), with a live preview on the open PR. Built-in categories that are noise for you can be switched off.
 
 Nothing is posted to GitHub. The panel is for the reviewer only, which is the main difference from tools that add bot comments to the PR for everyone.
 
@@ -106,5 +107,5 @@ Each tradeoff (backend choice, free providers, caching, why the content script e
 ## Roadmap
 
 - GitHub OAuth, so private repos work without pasting a token
-- Custom rules per user or team
+- Team rules from a file in the repo (`.github/pr-lens.yml`), shared by everyone reviewing it
 - GitLab merge requests
