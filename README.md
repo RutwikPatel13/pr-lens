@@ -106,6 +106,10 @@ shared/      types used by both
 docs/        decisions, demo PRs, images
 ```
 
+## Privacy
+
+What PR Lens stores, sends and to whom: [docs/privacy.md](docs/privacy.md). Store listing material: [docs/store](docs/store/listing.md).
+
 ## Design notes
 
 Each tradeoff (backend choice, free providers, caching, why the content script exists) is written up in [docs/decisions.md](docs/decisions.md). Real PRs where PR Lens catches something are in [docs/demo-prs.md](docs/demo-prs.md).

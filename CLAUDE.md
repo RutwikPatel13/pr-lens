@@ -50,6 +50,7 @@ npm test -w backend              # vitest; one file: npm test -w backend -- test
 npm run typecheck -w backend     # wrangler types, then tsc
 npm run typecheck -w extension
 npm run deploy -w backend        # https://pr-lens-backend.pr-lens-backend.workers.dev
+npm run package -w extension     # Chrome Web Store zip, manifest "key" removed (docs/store/listing.md)
 (cd backend && printf '%s' "$VALUE" | npx wrangler secret put GROQ_API_KEY)   # set/rotate a secret
 ```
 
@@ -125,7 +126,8 @@ manifest change, reload the extension in chrome://extensions.
 - One milestone (or feature) at a time, on its own branch, in small commits with clear messages.
 - When a choice has a real tradeoff (caching, chunk size, model choice), add a short note to
   `docs/decisions.md`: what was picked and why. These double as interview talking points.
-- Keep the README and `docs/demo-prs.md` current when behavior changes.
+- Keep the README, `docs/demo-prs.md` and `docs/privacy.md` current when behavior changes:
+  the privacy policy must match what data is sent and kept.
 - If something in this file is unclear or seems wrong, ask instead of guessing.
 
 ## Don't
