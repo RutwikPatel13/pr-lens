@@ -42,9 +42,9 @@ caching, (6) polish: loading and error states, settings, README and demo.
 - Custom rules per user or team, e.g. "always flag anything under billing/".
 - GitLab merge request support.
 
-Not yet done from the original plan: deploying the backend (`npm run deploy -w backend`,
-which creates the KV namespace on first deploy) and pinning CORS to the published
-extension ID.
+The backend is deployed on Cloudflare Workers (free plan). Publishing the extension to the
+Chrome Web Store is optional and not done: it needs a developer account and a listing, and
+its store ID would need adding to `ALLOWED_EXTENSION_IDS`.
 
 ## How to demo
 

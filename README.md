@@ -36,25 +36,40 @@ GitHub PR tab ── side panel (React) ──► backend (Hono on Cloudflare Wo
 
 ![Jump to the flagged line, with AI notes under the rule flags](docs/images/jump-to-line.png)
 
-## Run it locally
+## Try it
 
-Requires Node 22.12+ (`.nvmrc` says 24).
+The backend is deployed on Cloudflare Workers, and a production build of the extension uses it by default.
 
 ```bash
 npm install
-
-# Backend: LLM keys go in backend/.dev.vars (git-ignored). At least one key is needed for the
-# AI summary; without any, the panel still shows PR data and rule flags.
-cp backend/.dev.vars.example backend/.dev.vars    # then add GROQ_API_KEY and/or GEMINI_API_KEY
-npm run dev -w backend                            # http://localhost:8787
-
-# Extension
 npm run build -w extension
 ```
 
 Then in Chrome: `chrome://extensions` → Developer mode → **Load unpacked** → `extension/dist`. Pin PR Lens, open any public PR, and click the icon (or press Alt+Shift+P). The panel asks for a [fine-grained GitHub token](https://github.com/settings/personal-access-tokens/new) with "Public repositories" access; it's stored only in your browser.
 
-Free keys: [Groq](https://console.groq.com/keys), [Google AI Studio](https://aistudio.google.com/apikey), [OpenRouter](https://openrouter.ai/settings/keys).
+Requires Node 22.12+ (`.nvmrc` says 24).
+
+## Run the backend locally
+
+```bash
+# LLM keys go in backend/.dev.vars (git-ignored). Without any, the panel still shows PR data and rule flags.
+cp backend/.dev.vars.example backend/.dev.vars    # then add GROQ_API_KEY and/or GEMINI_API_KEY
+npm run dev -w backend                            # http://localhost:8787
+npm run dev -w extension                          # dev builds talk to localhost:8787
+```
+
+Or point a production build at it in the panel's Settings. Free keys: [Groq](https://console.groq.com/keys), [Google AI Studio](https://aistudio.google.com/apikey), [OpenRouter](https://openrouter.ai/settings/keys).
+
+## Deploy
+
+```bash
+cd backend
+npx wrangler login                                   # once
+npm run deploy                                       # creates the KV namespace on first deploy
+printf '%s' "$KEY" | npx wrangler secret put GROQ_API_KEY   # once per key
+```
+
+CORS only allows the extension IDs in `ALLOWED_EXTENSION_IDS` (`backend/wrangler.jsonc`). The ID is fixed by the public `key` in `extension/manifest.json`.
 
 ## Tests
 

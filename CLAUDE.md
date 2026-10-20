@@ -51,6 +51,8 @@ npm test -w backend              # vitest
 npm test -w backend -- tests/risk/engine.test.ts
 npm run typecheck -w backend     # wrangler types, then tsc
 npm run typecheck -w extension
+npm run deploy -w backend        # live at https://pr-lens-backend.pr-lens-backend.workers.dev
+(cd backend && printf '%s' "$VALUE" | npx wrangler secret put GROQ_API_KEY)   # set/rotate a secret
 ```
 
 Run the backend tests and both typechecks before telling me a change is done. After a
@@ -88,6 +90,11 @@ manifest change, the extension must be reloaded in chrome://extensions.
 - This machine's default `node` is 20.11, too old for Vite 8. Use Node 24:
   `/opt/homebrew/opt/node@24/bin` first on PATH.
 - `npm run <x> -w <workspace>` only works from the repo root.
+- `npm run build -w extension` targets the deployed backend; `npm run dev -w extension` targets
+  localhost:8787. Testing a local backend with a production build means changing it in Settings.
+- The manifest `key` fixes the extension ID, and the backend's CORS allows only the IDs in
+  `ALLOWED_EXTENSION_IDS`. Remove the key and the panel gets blocked.
+- In zsh scripts, never name a variable `path`: it overwrites `$PATH`.
 - `VITE_*` env vars are bundled into the extension. Never put a secret in one. API keys
   live in `backend/.dev.vars` (git-ignored); the e2e GitHub token is in `.env.test` (git-ignored).
 - Changing prompts, chunking, models or `PrAnalysis` means bumping `ANALYSIS_VERSION`; risk

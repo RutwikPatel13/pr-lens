@@ -1,7 +1,11 @@
 const TOKEN_KEY = 'githubToken';
 const BACKEND_URL_KEY = 'backendUrl';
 
-export const DEFAULT_BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:8787';
+// `npm run build` (production) talks to the deployed Worker; `npm run dev` to wrangler dev.
+// VITE_BACKEND_URL overrides both. Users can change it in Settings.
+const DEPLOYED_BACKEND_URL = 'https://pr-lens-backend.pr-lens-backend.workers.dev';
+export const DEFAULT_BACKEND_URL =
+  import.meta.env.VITE_BACKEND_URL ?? (import.meta.env.PROD ? DEPLOYED_BACKEND_URL : 'http://localhost:8787');
 
 // chrome.storage.local, not sync: the token shouldn't leave this machine via the user's Google account.
 export async function getGitHubToken(): Promise<string | null> {

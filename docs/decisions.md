@@ -208,3 +208,18 @@ remaining time is the one GitHub metadata call.
 
 **Known gap:** two reviewers opening the same uncached PR at once both run the
 model. Fine at this scale. A short "in progress" KV marker would fix it.
+
+## 2026-10-19: Deployed on the Workers free plan; extension ID pinned for CORS
+
+The backend runs at `pr-lens-backend.pr-lens-backend.workers.dev`. LLM keys are Worker
+secrets; the KV namespace was created by `wrangler deploy` from the id-less binding. The
+free plan errors past its daily limits rather than billing, so with free LLM tiers too, the
+worst case of abuse is used-up quota, not a cost.
+
+CORS allows only PR Lens's extension ID. An unpacked extension's ID comes from its folder
+path, so the manifest carries a public `key` to fix it (no private key is kept: the Chrome
+Web Store issues its own). CORS only stops other extensions and websites from using a
+reviewer's browser; direct API calls are limited by needing a GitHub token. Per-user rate
+limits (keyed by the GitHub login behind the token) are the next step if that's ever abused.
+
+Production builds of the extension default to the deployed URL; dev builds to localhost.
