@@ -5,13 +5,14 @@ import { isTestPath } from '../risk/paths';
 export type ChunkLimits = {
   // One file's numbered diff is cut here. ~3k tokens at ~4 chars per token.
   maxFileChars: number;
-  // Diff text per map call. Kept small for free-tier tokens-per-minute limits.
+  // Diff text per map call. Kept small for free-tier tokens-per-minute limits: Groq's free tier
+  // counts prompt + max output against 8k tokens/minute, and rejects a single larger request.
   maxChunkChars: number;
   // Map calls per PR. Bounds latency, free-tier usage and Workers' subrequest limit.
   maxChunks: number;
 };
 
-export const DEFAULT_LIMITS: ChunkLimits = { maxFileChars: 12_000, maxChunkChars: 16_000, maxChunks: 8 };
+export const DEFAULT_LIMITS: ChunkLimits = { maxFileChars: 10_000, maxChunkChars: 12_000, maxChunks: 8 };
 
 export type PromptFile = {
   path: string;

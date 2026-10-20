@@ -9,7 +9,7 @@ GROQ_API_KEY=
 OPENROUTER_API_KEY=
 
 # Optional: fallback order and model overrides.
-# LLM_PROVIDERS=gemini,groq,openrouter
-# GEMINI_MODEL=gemini-2.5-flash
-# GROQ_MODEL=llama-3.3-70b-versatile
+# LLM_PROVIDERS=groq,groq:openai/gpt-oss-20b,gemini,openrouter   (entries: name or name:model)
+# GEMINI_MODEL=gemini-3.8-flash
+# GROQ_MODEL=openai/gpt-oss-120b
 # OPENROUTER_MODEL=meta-llama/llama-3.3-70b-instruct:free

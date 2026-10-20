@@ -11,11 +11,12 @@ export interface LlmProvider {
   complete(request: LlmRequest): Promise<string>;
 }
 
-// rate_limited: try another provider, come back after retryAt.
-// unavailable: 5xx, timeout or network error; worth one retry.
+// rate_limited: wait if retryAt is soon, else try another provider and come back after retryAt.
+// unavailable: 5xx or network error; worth one retry.
+// timeout: no reply in time. Not retried: it already cost the full timeout.
 // auth: bad or revoked key. bad_request: the provider refused this request (too long, unsupported option).
 // bad_output: replied, but not with valid JSON in the expected shape.
-export type LlmErrorKind = 'rate_limited' | 'unavailable' | 'auth' | 'bad_request' | 'bad_output';
+export type LlmErrorKind = 'rate_limited' | 'unavailable' | 'timeout' | 'auth' | 'bad_request' | 'bad_output';
 
 export class LlmError extends Error {
   constructor(

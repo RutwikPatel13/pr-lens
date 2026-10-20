@@ -12,10 +12,12 @@ type Options = {
   model: string;
   // response_format json_object. Groq supports it; many OpenRouter free models reject it.
   jsonMode: boolean;
+  // Provider-specific request fields, e.g. Groq's reasoning_effort for gpt-oss models.
+  extraBody?: Record<string, unknown>;
 };
 
 // Groq and OpenRouter both speak the OpenAI chat completions format.
-export function openAiCompatibleProvider({ name, baseUrl, apiKey, model, jsonMode }: Options): LlmProvider {
+export function openAiCompatibleProvider({ name, baseUrl, apiKey, model, jsonMode, extraBody }: Options): LlmProvider {
   return {
     name,
     model,
@@ -29,6 +31,7 @@ export function openAiCompatibleProvider({ name, baseUrl, apiKey, model, jsonMod
         temperature: 0.2,
         max_tokens: request.maxOutputTokens,
         ...(jsonMode ? { response_format: { type: 'json_object' } } : {}),
+        ...extraBody,
       })) as ChatCompletion;
 
       const choice = body.choices?.[0];

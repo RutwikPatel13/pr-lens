@@ -144,3 +144,33 @@ Moving cooldowns to KV is cheap if that waste shows up in practice.
 Watch at deploy time: the Workers free plan caps subrequests per request (GitHub
 pages + up to 8 map calls with retries + reduce). The chunk cap keeps a normal PR
 well under it, but a huge PR with many retries could get close.
+
+## 2026-10-19: Provider chain tuned from measured free-tier behavior
+
+Measured with real keys on 2026-10-19:
+- **Groq** (`openai/gpt-oss-120b`): about 0.4s per call, but only 8,000 tokens
+  per minute, counted **per model**. `max_tokens` doesn't count against it;
+  tokens actually used do.
+- **Gemini** (`gemini-3.8-flash`; `2.5-flash` returns 404 for new keys): most
+  calls returned 503 "high demand", and the rest took about 60s.
+
+What changed as a result:
+- **Order:** Groq gpt-oss-120b, then Groq gpt-oss-20b (its own 8k/min quota on
+  the same account), then Gemini, then OpenRouter. Qwen on Groq was left out:
+  it has an extra output-tokens-per-minute cap that rejected normal requests.
+- **Waiting beats switching:** a 429 that resets within 20s is waited out on
+  the same provider instead of falling through to a 60s Gemini call. Groq's
+  `retry-after` header can say 1s when the real wait is longer, so the "try
+  again in 6.18s" in its message takes priority.
+- **Timeouts aren't retried** (they already cost 60s). Both 5xx and timeouts
+  cool the provider down for 30s, so later chunks skip it.
+- **Map calls run one at a time.** One chunk uses most of a Groq model's
+  minute, so parallel calls only bought 429s.
+- **Groq quirks:** its `json_validate_failed` 400 counts as bad output (one
+  retry); its 429 "Request too large" counts as a bad request (waiting won't
+  help).
+- **Panel:** low-severity LLM concerns are dropped (they were style remarks),
+  and an LLM concern on the same line as a rule flag shows as a note under it.
+
+Result: discourse#29187 in ~2.5s, and the 17-file discourse#28119 in ~13s, both
+on Groq. That PR failed after 120s before these changes.

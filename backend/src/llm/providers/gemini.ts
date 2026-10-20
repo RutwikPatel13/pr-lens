@@ -19,6 +19,8 @@ export function geminiProvider(apiKey: string, model: string): LlmProvider {
           responseMimeType: 'application/json',
           maxOutputTokens: request.maxOutputTokens,
           temperature: 0.2,
+          // Gemini 3 models think by default, which is slow and spends output tokens. Older models reject this field.
+          ...(model.startsWith('gemini-3') ? { thinkingConfig: { thinkingLevel: 'low' } } : {}),
         },
       })) as GeminiResponse;
 

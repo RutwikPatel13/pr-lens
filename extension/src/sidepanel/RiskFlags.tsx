@@ -26,9 +26,25 @@ function lineLabel(flag: RiskFlag): string {
 
 const SEVERITY_ORDER: Record<Severity, number> = { high: 0, medium: 1, low: 2 };
 
-// Rule flags arrive first; LLM flags join them once the analysis finishes.
+const location = (flag: RiskFlag) =>
+  `${flag.filePath}:${flag.lines === null ? 'file' : `${flag.lines.side}${flag.lines.start}`}`;
+
+// Rule flags arrive first; LLM flags join once the analysis finishes. An LLM flag on the same
+// line as a rule flag becomes a note under it (the model is usually adding context), so the
+// list doesn't show the same line twice.
 export function RiskFlags({ pr, ruleFlags, llmFlags }: { pr: PrRef; ruleFlags: RiskFlag[]; llmFlags: RiskFlag[] }) {
-  const flags = [...ruleFlags, ...llmFlags].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+  const ruleLocations = new Set(ruleFlags.map(location));
+  const notes = new Map<string, string[]>();
+  const separate: RiskFlag[] = [];
+  for (const flag of llmFlags) {
+    const key = location(flag);
+    if (ruleLocations.has(key)) notes.set(key, [...(notes.get(key) ?? []), flag.explanation]);
+    else separate.push(flag);
+  }
+  const flags = [...ruleFlags, ...separate].sort((a, b) => SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity]);
+  // Several rule flags can share a line; the notes go under the first one shown.
+  const noteOwner = new Map<string, string>();
+  for (const flag of flags) if (flag.source === 'rule' && !noteOwner.has(location(flag))) noteOwner.set(location(flag), flag.id);
   return (
     <section>
       <h2 className="mb-1 text-xs font-semibold uppercase text-gray-500">Risk flags ({flags.length})</h2>
@@ -51,6 +67,13 @@ export function RiskFlags({ pr, ruleFlags, llmFlags }: { pr: PrRef; ruleFlags: R
                 {lineLabel(flag)}
               </button>
               <p className="text-xs text-gray-700">{flag.explanation}</p>
+              {noteOwner.get(location(flag)) === flag.id &&
+                notes.get(location(flag))?.map((note) => (
+                  <p key={note} className="border-l-2 border-violet-300 pl-2 text-xs text-violet-900">
+                    <span className="font-medium">AI: </span>
+                    {note}
+                  </p>
+                ))}
             </li>
           ))}
         </ul>

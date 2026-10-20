@@ -53,8 +53,8 @@ The extension never holds an LLM API key. All model calls go through the backend
 
 The project runs on free LLM tiers. Every provider sits behind one `LlmProvider` interface in `backend/src/llm/providers/`, and the pipeline only talks to that interface.
 
-- Providers are tried in a configured order (e.g. Gemini, then Groq, then OpenRouter free models). Claude is an optional paid provider, used only if its key is set.
-- On a rate-limit or quota error (429), mark that provider as cooling down until its reset time and move to the next one. On 5xx or timeout, retry once, then move on.
+- Providers are tried in a configured order (`LLM_PROVIDERS`, entries `name` or `name:model`). Default: Groq gpt-oss-120b, Groq gpt-oss-20b (separate per-model quota), Gemini, OpenRouter. Claude is an optional paid provider, not built yet.
+- On a 429 that resets within 20s, wait and retry the same provider; otherwise cool it down until its reset and move on. 5xx: retry once. Timeout: no retry. Both then cool down 30s.
 - Output that fails schema validation gets one retry on the same provider with the validation error, then moves on.
 - Each stored analysis records which provider and model produced it.
 - Use one account per provider. Never rotate multiple accounts on one provider to stretch its quota.

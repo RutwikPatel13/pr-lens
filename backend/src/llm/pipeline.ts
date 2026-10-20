@@ -4,8 +4,9 @@ import type { FallbackLlm } from './fallback';
 import { mapRequest, reduceRequest } from './prompts';
 import { parseMapOutput, parseReduceOutput, ROLES, type MapFileNotes } from './schemas';
 
-// Map calls in flight at once. Free tiers allow roughly 10-30 requests a minute.
-const MAP_CONCURRENCY = 2;
+// Map calls in flight at once. One: Groq's free tier allows 8k tokens a minute and a single
+// chunk uses most of that, so parallel chunks only buy rate-limit errors.
+const MAP_CONCURRENCY = 1;
 
 async function mapInBatches<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
   const results: R[] = [];
@@ -16,24 +17,28 @@ async function mapInBatches<T, R>(items: T[], limit: number, fn: (item: T) => Pr
 }
 
 // Model-cited lines are kept only if they exist in the diff the model was shown.
+// Low-severity concerns are dropped: in practice they were style remarks, not risks.
 function toFlags(notes: MapFileNotes[], files: Map<string, PromptFile>): RiskFlag[] {
   return notes.flatMap((note) =>
-    note.concerns.slice(0, 3).map((concern, i): RiskFlag => {
+    note.concerns.slice(0, 3).flatMap((concern, i): RiskFlag[] => {
+      if (concern.severity === 'low') return [];
       const ref = concern.line?.trim().toUpperCase() ?? null;
       const valid = ref !== null && /^[LR]\d+$/.test(ref) && (files.get(note.path)?.lineRefs.has(ref) ?? false);
       const lines = valid && ref !== null
         ? { side: ref.startsWith('R') ? ('RIGHT' as const) : ('LEFT' as const), start: Number(ref.slice(1)), end: Number(ref.slice(1)) }
         : null;
-      return {
-        id: `llm:${note.path}:${i}`,
-        source: 'llm',
-        ruleId: 'llm',
-        category: concern.category,
-        severity: concern.severity,
-        filePath: note.path,
-        lines,
-        explanation: concern.explanation,
-      };
+      return [
+        {
+          id: `llm:${note.path}:${i}`,
+          source: 'llm',
+          ruleId: 'llm',
+          category: concern.category,
+          severity: concern.severity,
+          filePath: note.path,
+          lines,
+          explanation: concern.explanation,
+        },
+      ];
     }),
   );
 }

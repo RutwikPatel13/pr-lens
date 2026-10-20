@@ -18,7 +18,8 @@ const mapReply = JSON.stringify({
   files: [
     { path: 'src/refunds.ts', role: 'core', summary: 'Adds refund().', concerns: [
       { line: 'R2', category: 'payments', severity: 'high', explanation: 'Negative charge instead of a refund API call.' },
-      { line: 'R99', category: 'logic', severity: 'low', explanation: 'Cites a line that does not exist.' },
+      { line: 'R99', category: 'logic', severity: 'medium', explanation: 'Cites a line that does not exist.' },
+      { line: 'R1', category: 'logic', severity: 'low', explanation: 'Minor style nit.' },
     ] },
     { path: 'db/migrations/2_refunds.sql', role: 'schema', summary: 'Adds refunded_at.', concerns: [] },
     { path: 'src/refunds.test.ts', role: 'service', summary: 'Tests refund.', concerns: [] },
@@ -55,7 +56,8 @@ describe('analyzePr', () => {
       ['src/refunds.test.ts', 'other'],
     ]);
 
-    // A line the diff doesn't contain becomes a file-level flag instead of a wrong link.
+    // A line the diff doesn't contain becomes a file-level flag instead of a wrong link,
+    // and low-severity concerns are dropped.
     expect(analysis.flags.map((f) => [f.filePath, f.lines?.start ?? null, f.source])).toEqual([
       ['src/refunds.ts', 2, 'llm'],
       ['src/refunds.ts', null, 'llm'],

@@ -27,7 +27,7 @@ function describeFile(file: PromptFile): string {
 export function mapRequest(pr: PrData, files: PromptFile[]): LlmRequest {
   return {
     system: SYSTEM,
-    maxOutputTokens: 4_000,
+    maxOutputTokens: 2_000,
     prompt: `${describePr(pr)}
 
 Below are some of the changed files. Each diff line starts with its line reference:
@@ -40,12 +40,12 @@ For every file above, return:
 - "path": exactly as written in its header
 - "role": one of "schema", "config", "core", "api", "ui", "test", "docs", "other"
 - "summary": one or two sentences on what changed in this file
-- "concerns": up to 3 specific things the reviewer should check (a likely bug, an unhandled case, risky behavior). Use [] if nothing stands out. For each:
+- "concerns": up to 3 specific problems or risks the reviewer should check (a likely bug, an unhandled case, risky behavior). Only real concerns: never add one that says something is fine or unchanged. Use [] if nothing stands out. For each:
   - "line": the most relevant line reference from the diff, like "R12", or null
   - "category": one of "schema", "auth", "payments", "config", "dependencies", "tests", "secrets", "logic"
   - "severity": "high", "medium" or "low"
   - "explanation": one sentence
-  Only repeat a rule flag if you can add something specific, such as whether it's actually a problem in context.
+  For a line that already has a rule flag, only add a concern if you can say something the rule can't, such as whether it's actually a problem in context (for example, a drop inside a migration's rollback method is expected).
 
 JSON shape:
 {"files":[{"path":"src/example.ts","role":"core","summary":"...","concerns":[{"line":"R12","category":"logic","severity":"medium","explanation":"..."}]}]}`,
@@ -60,7 +60,7 @@ export function reduceRequest(pr: PrData, notes: MapFileNotes[], notRead: NotRea
 
   return {
     system: SYSTEM,
-    maxOutputTokens: 3_000,
+    maxOutputTokens: 2_000,
     prompt: `${describePr(pr)}
 
 Linked issues:
